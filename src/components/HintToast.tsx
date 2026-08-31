@@ -9,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withDelay,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -28,12 +29,16 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
       progress.value = withTiming(0, { duration: 160 });
       return;
     }
-    progress.value = withTiming(1, { duration: 180 });
-    progress.value = withDelay(
-      durationMs,
-      withTiming(0, { duration: 220 }, (finished) => {
-        if (finished) runOnJS(onHide)();
-      }),
+    // Tek bir dizi olarak kurulmali: iki ayri atama yapilirsa ikincisi
+    // birincisini aninda iptal eder ve balon hic gorunmez.
+    progress.value = withSequence(
+      withTiming(1, { duration: 180 }),
+      withDelay(
+        durationMs,
+        withTiming(0, { duration: 220 }, (finished) => {
+          if (finished) runOnJS(onHide)();
+        }),
+      ),
     );
   }, [message, durationMs, progress, onHide]);
 
@@ -45,13 +50,14 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
   if (!message) return null;
 
   return (
-    <Animated.View style={[styles.toast, style]} pointerEvents="none">
+    <Animated.View style={[styles.toast, styles.noHit, style]}>
       <Text style={styles.text}>{message}</Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  noHit: { pointerEvents: 'none' },
   toast: {
     position: 'absolute',
     left: spacing.lg,

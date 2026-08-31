@@ -81,7 +81,7 @@ export function InventoryCard({ item, onDiscard }: Props) {
   return (
     <View style={[styles.card, { backgroundColor: quality.bg, borderColor: quality.border }]}>
       {quality.glows ? (
-        <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none" />
+        <Animated.View style={[styles.glow, styles.noHit, glowStyle]} />
       ) : null}
 
       <View style={styles.emojiBox}>
@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     overflow: 'hidden',
   },
+  noHit: { pointerEvents: 'none' },
   glow: {
     ...StyleSheet.absoluteFill,
     borderWidth: borders.thick,

@@ -113,7 +113,6 @@ export function BottomSheet({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.avoider}
-          pointerEvents="box-none"
         >
           <Animated.View style={[styles.sheet, sheetStyle]}>
             <GestureDetector gesture={dragGesture}>
@@ -137,7 +136,8 @@ export function BottomSheet({
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
-  avoider: { justifyContent: 'flex-end' },
+  // box-none: panelin disindaki bosluk arkadaki backdrop'a tiklamayi gecirmeli.
+  avoider: { justifyContent: 'flex-end', pointerEvents: 'box-none' },
   sheet: {
     backgroundColor: colors.parchment,
     borderTopWidth: borders.thick,

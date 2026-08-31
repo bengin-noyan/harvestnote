@@ -239,15 +239,14 @@ function NoteCardComponent({
           ]}
         >
           {/* Toprak çizgileri */}
-          <View style={styles.furrows} pointerEvents="none">
+          <View style={[styles.furrows, styles.noHit]}>
             <View style={styles.furrow} />
             <View style={styles.furrow} />
             <View style={styles.furrow} />
           </View>
 
           <Animated.View
-            style={[styles.glowRing, glowStyle]}
-            pointerEvents="none"
+            style={[styles.glowRing, styles.noHit, glowStyle]}
           />
 
           <Text style={styles.emoji}>{stageEmoji(stage, note.seed_type)}</Text>
@@ -281,8 +280,11 @@ function NoteCardComponent({
 
           {/* Ot katmanı: kaydırıldıkça kayar ve solar */}
           <Animated.View
-            style={[styles.weedLayer, weedStyle]}
-            pointerEvents={isWeedy ? 'auto' : 'none'}
+            style={[
+              styles.weedLayer,
+              weedStyle,
+              { pointerEvents: isWeedy ? 'auto' : 'none' },
+            ]}
           >
             <View style={styles.weedRow}>
               <Text style={styles.weedEmoji}>🥀</Text>
@@ -306,6 +308,8 @@ export const NoteCard = React.memo(NoteCardComponent);
 
 const styles = StyleSheet.create({
   wrapper: { padding: spacing.xs },
+  /** Dekoratif katmanlar jestleri yakalamamali. */
+  noHit: { pointerEvents: 'none' },
   tile: {
     flex: 1,
     borderWidth: borders.thick,
