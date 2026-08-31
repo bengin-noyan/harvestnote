@@ -1,0 +1,8 @@
+# Satir sonlarini depoda LF olarak normalize et (Windows/macOS/Linux karisik ekip)
+* text=auto eol=lf
+
+# Ikili dosyalar
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary

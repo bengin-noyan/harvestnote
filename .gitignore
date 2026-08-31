@@ -1,0 +1,28 @@
+# Bagimliliklar
+node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# Prebuild ciktilari (managed workflow'da uretilir, kaynak degildir)
+/android/
+/ios/
+
+# Ortam degiskenleri
+.env
+.env.local
+.env*.local
+
+# Yerel derleme/arac ciktilari
+*.tsbuildinfo
+*.log
+npm-debug.*
+yarn-error.log
+
+# Isletim sistemi / editor
+.DS_Store
+*.orig.*

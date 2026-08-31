@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "HarvestNote",
+    "slug": "harvestnote",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.harvestnote.app"
+    },
+    "android": {
+      "package": "com.harvestnote.app",
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-notifications",
+      "expo-status-bar"
+    ]
+  }
+}
