@@ -9,6 +9,7 @@
  *   (aynı anda iki çağrı) promise cache'i sayesinde tek sefere iner.
  */
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 import { DATABASE_NAME, MIGRATIONS, TARGET_SCHEMA_VERSION } from './schema';
 
@@ -70,6 +71,28 @@ async function migrate(db: Database): Promise<void> {
       await db.execAsync(`PRAGMA user_version = ${migration.version}`);
     });
   }
+}
+
+/**
+ * Yazma transaction'i.
+ *
+ * Native'de exclusive transaction kullanilir: iki hizli jest ayni satiri
+ * ayni anda degistiremesin. expo-sqlite'in web uygulamasi bunu desteklemiyor
+ * (`withExclusiveTransactionAsync is not supported on web`), orada duz
+ * transaction'a duseriz — web tek is parcacikli oldugu icin korunacak bir
+ * yaris zaten yok, atomiklik ise BEGIN/COMMIT ile korunur.
+ *
+ * Her iki yolda da blok icindeki sorgular verilen `txn` uzerinden gitmeli;
+ * exclusive transaction sirasinda global `db` ile yazmak kilitlenme demek.
+ */
+export async function withWriteTransaction(
+  db: Database,
+  task: (txn: Database) => Promise<void>,
+): Promise<void> {
+  if (Platform.OS === 'web') {
+    return db.withTransactionAsync(() => task(db));
+  }
+  return db.withExclusiveTransactionAsync(task);
 }
 
 /** Bağlantıyı kapatır (test teardown / logout senaryoları). */

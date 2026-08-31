@@ -11,7 +11,11 @@ import type {
   NoteStatus,
   UpdateNoteInput,
 } from '../../types';
-import { getDatabase, type Database } from '../database';
+import {
+  getDatabase,
+  withWriteTransaction,
+  type Database,
+} from '../database';
 import { mapNote } from '../mappers';
 import { insertHarvestRecord } from './inventory';
 
@@ -146,9 +150,9 @@ export async function harvestNote(
   let quality: HarvestQuality = 'normal';
   let harvested = false;
 
-  // Exclusive: iki hızlı swipe aynı notu aynı anda hasat etmeye çalışamasın.
-  // Blok içindeki her sorgu `txn` üzerinden gitmeli (bkz. setNoteStatuses).
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  // Iki hizli swipe ayni notu ayni anda hasat etmeye calisamasin.
+  // Blok icindeki her sorgu `txn` uzerinden gitmeli (bkz. setNoteStatuses).
+  await withWriteTransaction(db, async (txn) => {
     const row = await txn.getFirstAsync<NoteRow>(
       'SELECT * FROM notes WHERE id = ? AND harvested_at IS NULL',
       [id],

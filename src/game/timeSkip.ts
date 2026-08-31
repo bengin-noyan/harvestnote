@@ -14,7 +14,7 @@
  *  - Yabani ot büyümeyi ezer: iki koşul da sağlanıyorsa sonuç 'weedy'.
  *  - Hasat edilmiş notlara (harvested_at != NULL) dokunulmaz.
  */
-import { getDatabase } from '../db/database';
+import { getDatabase, withWriteTransaction } from '../db/database';
 import { toNoteStatus, toSeedType } from '../db/mappers';
 import {
   ensureSettings,
@@ -106,7 +106,7 @@ export async function runTimeSkip(
   // last_opened_at eski kalır ve simülasyon sonraki açılışta tekrar dener.
   // Yazmalar `txn` üzerinden gider; exclusive blok içinde `db` kullanmak
   // kendi kilidini bekleyeceği için kilitlenme demektir.
-  await db.withExclusiveTransactionAsync(async (txn) => {
+  await withWriteTransaction(db, async (txn) => {
     await setNoteStatuses(plan.grownNoteIds, 'growing', txn);
     await setNoteStatuses(plan.weededNoteIds, 'weedy', txn);
     await setLastOpenedAt(now, txn);
