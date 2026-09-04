@@ -13,7 +13,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { durations, easings } from '../theme/motion';
 
 interface Props {
   message: string | null;
@@ -26,16 +27,19 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
 
   useEffect(() => {
     if (!message) {
-      progress.value = withTiming(0, { duration: 160 });
+      progress.value = withTiming(0, {
+        duration: durations.fast,
+        easing: easings.in,
+      });
       return;
     }
     // Tek bir dizi olarak kurulmali: iki ayri atama yapilirsa ikincisi
     // birincisini aninda iptal eder ve balon hic gorunmez.
     progress.value = withSequence(
-      withTiming(1, { duration: 180 }),
+      withTiming(1, { duration: durations.base, easing: easings.out }),
       withDelay(
         durationMs,
-        withTiming(0, { duration: 220 }, (finished) => {
+        withTiming(0, { duration: durations.base, easing: easings.in }, (finished) => {
           if (finished) runOnJS(onHide)();
         }),
       ),
@@ -69,6 +73,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
+    ...elevation.overlay,
   },
   text: {
     ...typography.body,

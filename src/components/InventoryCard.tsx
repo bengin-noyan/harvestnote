@@ -13,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { SEED_CATALOG } from '../game/config';
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { borders, colors, elevation, radii, spacing, typography } from '../theme';
 import type { HarvestQuality, InventoryItem } from '../types';
 import { formatDate, formatRelative } from '../utils/format';
 
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
     overflow: 'hidden',
+    ...elevation.card,
   },
   noHit: { pointerEvents: 'none' },
   glow: {
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     marginTop: 2,
   },
-  badgeText: { ...typography.caption, fontSize: 10 },
+  badgeText: { ...typography.caption, fontSize: 10, lineHeight: 14 },
   discard: { padding: spacing.xs },
   discardText: { fontSize: 16, fontWeight: '700' },
 });

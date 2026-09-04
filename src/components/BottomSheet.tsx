@@ -29,7 +29,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { durations, easings, springs } from '../theme/motion';
 
 const DISMISS_DISTANCE = 90;
 
@@ -58,10 +59,16 @@ export function BottomSheet({
     if (visible) {
       setMounted(true);
       dragY.value = 0;
-      progress.value = withTiming(1, { duration: 240 });
+      progress.value = withTiming(1, {
+        duration: durations.slow,
+        easing: easings.out,
+      });
       return;
     }
-    progress.value = withTiming(0, { duration: 200 }, (finished) => {
+    progress.value = withTiming(0, {
+      duration: durations.base,
+      easing: easings.in,
+    }, (finished) => {
       if (finished) runOnJS(setMounted)(false);
     });
   }, [visible, progress, dragY]);
@@ -77,7 +84,7 @@ export function BottomSheet({
       if (event.translationY > DISMISS_DISTANCE || event.velocityY > 900) {
         runOnJS(close)();
       } else {
-        dragY.value = withSpring(0, { damping: 18 });
+        dragY.value = withSpring(0, springs.settle);
       }
     });
 
@@ -148,6 +155,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radii.lg,
     paddingBottom: spacing.xl,
     maxHeight: '88%',
+    ...elevation.overlay,
   },
   header: {
     alignItems: 'center',

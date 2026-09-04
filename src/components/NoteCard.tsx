@@ -1,14 +1,20 @@
 /**
- * Tarladaki tek bir toprak hücresi.
+ * Tarladaki tek bir parsel.
+ *
+ * Parsel kendi kenarlığı, köşe yuvarlaması ve komşusuyla arasında boşluğu
+ * olan bir karttır — tarlaya karışmaz, üstünde durur. Zemin çizgisi parseli
+ * ikiye böler — üstünde bitki, altında yazı. Bitki höyüğe kök salar ve
+ * olgunlaştıkça büyür: olgunluk ayrı bir ilerleme çubuğuyla değil,
+ * doğrudan bitkinin boyuyla anlatılır.
  *
  * Jest haritası (aşamaya göre değişir):
  *   weedy        yana kaydır  -> otlar süzülüp gider, `tendNote` çalışır
- *                dokunma      -> AÇILMAZ; kart sallanır ve ipucu gösterilir
+ *                dokunma      -> AÇILMAZ; parsel sallanır ve ipucu gösterilir
  *   harvestable  yukarı kaydır / uzun bas -> ürün küçülüp kaybolur, hasat
  *                dokunma      -> detay
  *   diğer        dokunma      -> detay
  *
- * Aşamaların tamamı `resolveStage` ile türetilir; kart hiçbir zaman kendi
+ * Aşamaların tamamı `resolveStage` ile türetilir; parsel hiçbir zaman kendi
  * başına durum uydurmaz.
  */
 import React, { useCallback, useEffect } from 'react';
@@ -32,13 +38,23 @@ import {
   stageEmoji,
   STAGE_VISUALS,
 } from '../game/stages';
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { colors, elevation, radii, spacing, typography } from '../theme';
+import { durations, easings, springs } from '../theme/motion';
 import type { Note } from '../types';
+import { PlotGround, plotMetrics } from './PlotGround';
 
 /** Otların temizlenmiş sayılması için gereken yatay mesafe. */
 const CLEAR_DISTANCE = 88;
 /** Hasat için gereken yukarı kaydırma mesafesi. */
 const HARVEST_DISTANCE = 64;
+
+/**
+ * Bitkinin parsel kenarına oranı. Yeni ekilen filiz `MIN`, hasada hazır
+ * ürün `MAX` boyundadır; arası olgunlukla doğrusal. İlerleme çubuğunun
+ * yerini bu tutuyor.
+ */
+const PLANT_MIN_RATIO = 0.17;
+const PLANT_MAX_RATIO = 0.36;
 
 interface Props {
   note: Note;
@@ -48,7 +64,7 @@ interface Props {
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
   onHarvest: (id: number) => void;
-  /** Ot basmış karta dokunulduğunda: ipucu göster. */
+  /** Ot basmış parsele dokunulduğunda: ipucu göster. */
   onBlocked: () => void;
 }
 
@@ -68,6 +84,12 @@ function NoteCardComponent({
   const progress = maturityProgress(note, now);
   const seed = SEED_CATALOG[note.seed_type];
 
+  const { ground, moundHeight } = plotMetrics(size);
+  const plantSize = Math.round(
+    size * (PLANT_MIN_RATIO + (PLANT_MAX_RATIO - PLANT_MIN_RATIO) * progress),
+  );
+  const glowSize = Math.round(plantSize * 1.9);
+
   const weedX = useSharedValue(0);
   const weedOpacity = useSharedValue(isWeedy ? 1 : 0);
   const cardScale = useSharedValue(0.88);
@@ -78,23 +100,26 @@ function NoteCardComponent({
 
   // Ekildiğinde tek seferlik "filizlenme" sıçraması.
   useEffect(() => {
-    cardScale.value = withSpring(1, { damping: 13, stiffness: 170 });
+    cardScale.value = withSpring(1, springs.enter);
   }, [cardScale]);
 
   // Aşama dışarıdan değişebilir (time-skip, ot temizleme): katmanları eşitle.
   useEffect(() => {
-    weedOpacity.value = withTiming(isWeedy ? 1 : 0, { duration: 220 });
+    weedOpacity.value = withTiming(isWeedy ? 1 : 0, {
+      duration: durations.base,
+      easing: easings.out,
+    });
     if (!isWeedy) weedX.value = 0;
   }, [isWeedy, weedOpacity, weedX]);
 
-  // Olgun ürün nefes alır gibi parlar.
+  // Olgun ürünün altındaki toprak nefes alır gibi parlar.
   useEffect(() => {
     if (isHarvestable) {
       glow.value = 0.35;
       glow.value = withRepeat(withTiming(1, { duration: 1100 }), -1, true);
     } else {
       cancelAnimation(glow);
-      glow.value = withTiming(0, { duration: 200 });
+      glow.value = withTiming(0, { duration: durations.base });
     }
     return () => cancelAnimation(glow);
   }, [isHarvestable, glow]);
@@ -113,12 +138,15 @@ function NoteCardComponent({
    */
   const playHarvest = () => {
     'worklet';
-    liftY.value = withTiming(-52, { duration: 280 });
+    liftY.value = withTiming(-52, {
+      duration: durations.slow,
+      easing: easings.out,
+    });
     cardScale.value = withSequence(
-      withTiming(1.18, { duration: 110 }),
-      withTiming(0, { duration: 220 }),
+      withTiming(1.18, { duration: durations.fast, easing: easings.out }),
+      withTiming(0, { duration: durations.base, easing: easings.in }),
     );
-    cardOpacity.value = withTiming(0, { duration: 300 }, (finished) => {
+    cardOpacity.value = withTiming(0, { duration: durations.slow }, (finished) => {
       if (finished) runOnJS(handleHarvest)();
     });
   };
@@ -139,18 +167,21 @@ function NoteCardComponent({
     })
     .onEnd((event) => {
       if (Math.abs(event.translationX) < CLEAR_DISTANCE) {
-        weedX.value = withSpring(0, { damping: 16 });
-        weedOpacity.value = withTiming(1, { duration: 180 });
+        weedX.value = withSpring(0, springs.settle);
+        weedOpacity.value = withTiming(1, { duration: durations.base });
         return;
       }
       const direction = event.translationX > 0 ? 1 : -1;
-      weedX.value = withTiming(direction * 280, { duration: 240 });
-      weedOpacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      weedX.value = withTiming(direction * 280, {
+        duration: durations.slow,
+        easing: easings.in,
+      });
+      weedOpacity.value = withTiming(0, { duration: durations.base }, (finished) => {
         if (finished) runOnJS(handleTend)();
       });
       cardScale.value = withSequence(
-        withTiming(1.07, { duration: 130 }),
-        withSpring(1, { damping: 12 }),
+        withTiming(1.07, { duration: durations.fast, easing: easings.out }),
+        withSpring(1, springs.enter),
       );
     });
 
@@ -168,8 +199,8 @@ function NoteCardComponent({
         playHarvest();
         return;
       }
-      liftY.value = withSpring(0, { damping: 16 });
-      cardScale.value = withSpring(1, { damping: 16 });
+      liftY.value = withSpring(0, springs.settle);
+      cardScale.value = withSpring(1, springs.settle);
     });
 
   const longPressGesture = Gesture.LongPress()
@@ -185,11 +216,13 @@ function NoteCardComponent({
       if (!success) return;
       if (isWeedy) {
         // Ot basmış not açılmaz: reddedişi animasyonla anlat.
+        // Sallanma adımı `fast`in yarısı: reddediş tereddütsüz okunmalı.
+        const step = durations.fast / 2;
         shakeX.value = withSequence(
-          withTiming(-7, { duration: 55 }),
-          withTiming(7, { duration: 55 }),
-          withTiming(-4, { duration: 55 }),
-          withTiming(0, { duration: 55 }),
+          withTiming(-7, { duration: step }),
+          withTiming(7, { duration: step }),
+          withTiming(-4, { duration: step }),
+          withTiming(0, { duration: step }),
         );
         runOnJS(onBlocked)();
         return;
@@ -222,83 +255,107 @@ function NoteCardComponent({
     ],
   }));
 
-  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value }));
+  /**
+   * Parıltı toprağa vuran bir hâle; dolu altın bir leke olmasın diye
+   * opaklık dar bir aralıkta gezinir.
+   */
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: 0.1 + glow.value * 0.22,
+  }));
 
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
-        style={[styles.wrapper, { width: size, height: size }, cardStyle]}
+        style={[styles.plot, { width: size, height: size }, cardStyle]}
         accessibilityRole="button"
         accessibilityLabel={`${note.title}, ${visual.label}`}
         accessibilityHint={visual.hint}
       >
+        <PlotGround size={size} variant={note.id} />
+
+        {/* Zemin çizgisinin üstü: bitki höyüğe basar. */}
         <View
           style={[
-            styles.tile,
-            { backgroundColor: visual.tile, borderColor: visual.border },
+            styles.plantZone,
+            styles.noHit,
+            { height: ground, paddingBottom: Math.round(moundHeight * 0.45) },
           ]}
         >
-          {/* Toprak çizgileri */}
-          <View style={[styles.furrows, styles.noHit]}>
-            <View style={styles.furrow} />
-            <View style={styles.furrow} />
-            <View style={styles.furrow} />
-          </View>
-
           <Animated.View
-            style={[styles.glowRing, styles.noHit, glowStyle]}
+            style={[
+              styles.glow,
+              glowStyle,
+              {
+                width: glowSize,
+                height: glowSize,
+                borderRadius: glowSize / 2,
+                bottom: -Math.round(glowSize * 0.3),
+              },
+            ]}
           />
+          <View
+            style={[
+              styles.plantShadow,
+              {
+                width: Math.round(plantSize * 0.8),
+                height: Math.round(plantSize * 0.16),
+                borderRadius: plantSize,
+                bottom: Math.round(moundHeight * 0.35),
+              },
+            ]}
+          />
+          <Text
+            style={[styles.plant, { fontSize: plantSize }]}
+          >
+            {stageEmoji(stage, note.seed_type)}
+          </Text>
+        </View>
 
-          <Text style={styles.emoji}>{stageEmoji(stage, note.seed_type)}</Text>
-
+        {/* Zemin çizgisinin altı: yazı. */}
+        <View
+          style={[
+            styles.base,
+            styles.noHit,
+            { top: ground, height: size - ground },
+          ]}
+        >
           <Text style={styles.title} numberOfLines={2}>
             {note.title}
           </Text>
-
-          <View style={styles.footer}>
-            <Text style={styles.stageLabel} numberOfLines={1}>
-              {seed?.emoji ?? ''} {visual.label}
-            </Text>
-            <View style={styles.progressTrack}>
-              <View
-                style={{
-                  flex: progress,
-                  backgroundColor: isHarvestable
-                    ? colors.goldLight
-                    : colors.leaf,
-                }}
-              />
-              <View style={{ flex: 1 - progress }} />
-            </View>
-          </View>
-
-          {isHarvestable ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>↑ hasat</Text>
-            </View>
-          ) : null}
-
-          {/* Ot katmanı: kaydırıldıkça kayar ve solar */}
-          <Animated.View
-            style={[
-              styles.weedLayer,
-              weedStyle,
-              { pointerEvents: isWeedy ? 'auto' : 'none' },
-            ]}
+          <Text
+            style={[styles.caption, isHarvestable ? styles.captionReady : null]}
+            numberOfLines={1}
           >
-            <View style={styles.weedRow}>
-              <Text style={styles.weedEmoji}>🥀</Text>
-              <Text style={styles.weedEmojiSmall}>🌿</Text>
-              <Text style={styles.weedEmoji}>🥀</Text>
-            </View>
-            <Text style={styles.weedTitle} numberOfLines={1}>
+            {isHarvestable ? '↑ hasat' : `${seed?.emoji ?? ''} ${visual.label}`}
+          </Text>
+        </View>
+
+        {/* Ot katmanı: kaydırıldıkça kayar ve solar */}
+        <Animated.View
+          style={[
+            styles.weedLayer,
+            weedStyle,
+            { pointerEvents: isWeedy ? 'auto' : 'none' },
+          ]}
+        >
+          <View
+            style={[styles.weedRow, { top: ground - Math.round(size * 0.34) }]}
+          >
+            <Text style={{ fontSize: Math.round(size * 0.2) }}>🥀</Text>
+            <Text style={{ fontSize: Math.round(size * 0.15), opacity: 0.8 }}>
+              🌿
+            </Text>
+            <Text style={{ fontSize: Math.round(size * 0.2) }}>🥀</Text>
+          </View>
+          <View style={[styles.base, { top: ground, height: size - ground }]}>
+            <Text style={styles.weedTitle} numberOfLines={2}>
               {note.title}
             </Text>
-            <View style={styles.weedHint}>
-              <Text style={styles.weedHintText}>↔ temizle</Text>
-            </View>
-          </Animated.View>
-        </View>
+            <Text style={styles.weedHint} numberOfLines={1}>
+              ↔ temizle
+            </Text>
+          </View>
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   );
@@ -307,84 +364,91 @@ function NoteCardComponent({
 export const NoteCard = React.memo(NoteCardComponent);
 
 const styles = StyleSheet.create({
-  wrapper: { padding: spacing.xs },
-  /** Dekoratif katmanlar jestleri yakalamamali. */
-  noHit: { pointerEvents: 'none' },
-  tile: {
-    flex: 1,
-    borderWidth: borders.thick,
-    borderRadius: radii.md,
-    padding: spacing.sm,
+  /** Parsel tarlaya karışmaz: kendi kenarlığı ve köşesiyle bir kart. */
+  plot: {
     overflow: 'hidden',
-    justifyContent: 'space-between',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.soil,
+    backgroundColor: colors.soilDeep,
+    ...elevation.card,
   },
-  furrows: {
-    ...StyleSheet.absoluteFill,
-    justifyContent: 'space-evenly',
+  /** Dekoratif katmanlar jestleri yakalamamalı. */
+  noHit: { pointerEvents: 'none' },
+  plantZone: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  glow: {
+    position: 'absolute',
+    alignSelf: 'center',
+    backgroundColor: colors.goldLight,
+  },
+  plantShadow: {
+    position: 'absolute',
+    alignSelf: 'center',
+    backgroundColor: colors.bark,
     opacity: 0.35,
   },
-  furrow: { height: 1, backgroundColor: colors.furrow },
-  glowRing: {
-    ...StyleSheet.absoluteFill,
-    borderWidth: borders.thick,
-    borderRadius: radii.sm,
-    borderColor: colors.goldLight,
+  /**
+   * Android emojiyi satır kutusunun font padding'iyle üstten/alttan kırpıyor;
+   * padding kapatılıp dikey hizalama ortaya alınınca tam görünüyor. lineHeight
+   * verilmiyor — emojinin kendi ölçüsü fontSize'dan zaten büyük.
+   */
+  plant: {
+    textAlign: 'center',
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
-  emoji: { fontSize: 40, textAlign: 'center', marginTop: spacing.xs },
+  base: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingTop: spacing.xs,
+    paddingHorizontal: spacing.xs,
+    gap: 1,
+  },
   title: {
     ...typography.body,
+    fontSize: 13,
+    lineHeight: 17,
     color: colors.textOnDark,
     textAlign: 'center',
-    marginTop: spacing.xs,
   },
-  footer: { gap: spacing.xs },
-  stageLabel: {
+  caption: {
     ...typography.caption,
     color: colors.textOnDarkMuted,
     textAlign: 'center',
   },
-  progressTrack: {
-    flexDirection: 'row',
-    height: 5,
-    backgroundColor: colors.soilDeep,
-    borderRadius: radii.pill,
-    overflow: 'hidden',
-  },
-  badge: {
-    position: 'absolute',
-    top: spacing.xs,
-    right: spacing.xs,
-    backgroundColor: colors.gold,
-    borderWidth: 1,
-    borderColor: colors.goldDeep,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.xs + 1,
-    paddingVertical: 1,
-  },
-  badgeText: { ...typography.caption, fontSize: 9, color: colors.bark },
+  captionReady: { color: colors.goldLight },
   weedLayer: {
     ...StyleSheet.absoluteFill,
     backgroundColor: colors.weedDeep,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    padding: spacing.sm,
   },
-  weedRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
-  weedEmoji: { fontSize: 30 },
-  weedEmojiSmall: { fontSize: 22, opacity: 0.8 },
+  weedRow: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 2,
+  },
   weedTitle: {
     ...typography.caption,
     color: colors.textOnDarkMuted,
     textAlign: 'center',
   },
   weedHint: {
-    borderWidth: 1,
-    borderColor: colors.weed,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    marginTop: spacing.xs,
+    ...typography.caption,
+    fontSize: 10,
+    lineHeight: 14,
+    color: colors.leafLight,
+    textAlign: 'center',
   },
-  weedHintText: { ...typography.caption, fontSize: 10, color: colors.leafLight },
 });

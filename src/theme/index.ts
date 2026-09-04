@@ -61,9 +61,42 @@ export const borders = {
   thick: 3,
 } as const;
 
+/**
+ * Yükseklik katmanları. Toprak paleti düşük kontrastlı olduğu için kartların
+ * zeminden ayrılması kenarlığa bırakılamıyordu; gölge bu işi kenarlığı
+ * kalınlaştırmadan yapıyor. Android'de gölge yalnızca zemini olan view'da
+ * çizilir — `elevation` verilen her yüzeye `backgroundColor` de gerekir.
+ */
+export const elevation = {
+  /** Izgaradaki parsel: toprağın üstünde durduğu anlaşılacak kadar. */
+  card: {
+    shadowColor: '#120c07',
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  /** Ekranın üstüne çıkan yüzeyler: panel, ipucu balonu. */
+  overlay: {
+    shadowColor: '#120c07',
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: -4 },
+    elevation: 12,
+  },
+} as const;
+
+/**
+ * Tipografi ölçeği. Her basamak kendi satır yüksekliğini taşır: sarmalanan
+ * başlıklar (kart başlığı iki satıra kadar çıkıyor) satır aralığı verilmediğinde
+ * platformdan platforma değişiyordu.
+ *
+ * `fontSize`'ı ezen bir stil `lineHeight`'ı da ezmeli — yoksa küçük metin
+ * kendinden büyük bir satır kutusunda yüzer.
+ */
 export const typography = {
-  title: { fontSize: 22, fontWeight: '800', letterSpacing: 0.5 },
-  heading: { fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
-  body: { fontSize: 14, fontWeight: '500' },
-  caption: { fontSize: 11, fontWeight: '600', letterSpacing: 0.4 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: 0.5 },
+  heading: { fontSize: 16, lineHeight: 21, fontWeight: '700', letterSpacing: 0.3 },
+  body: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
+  caption: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.4 },
 } as const;
