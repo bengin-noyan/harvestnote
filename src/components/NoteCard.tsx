@@ -404,12 +404,17 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     textAlignVertical: 'center',
   },
+  /**
+   * Yazı bloğu zemin çizgisinin altındaki yarının ortasına oturur. Üstten
+   * sabit padding verildiğinde kartın dibinde bir tutam ölü toprak kalıyordu;
+   * koyu zeminde fark edilmiyordu, kağıt zeminde hata gibi duruyor.
+   */
   base: {
     position: 'absolute',
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingTop: spacing.xs,
+    justifyContent: 'center',
     paddingHorizontal: spacing.xs,
     gap: 1,
   },

@@ -9,7 +9,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, elevation, radii, spacing, typography } from '../theme';
+import { borders, colors, radii, spacing, typography } from '../theme';
 import { PlotGround, plotMetrics } from './PlotGround';
 
 interface Props {
@@ -35,7 +35,7 @@ export function EmptyPlot({ size, index, onPress }: Props) {
       accessibilityLabel="Boş parsel"
       accessibilityHint="Buraya yeni bir tohum ek"
     >
-      <PlotGround size={size} variant={index} />
+      <PlotGround size={size} variant={index} tone="paper" />
 
       {/* Höyüğün tepesinde tohumu bekleyen çukur. */}
       <View
@@ -71,17 +71,21 @@ const styles = StyleSheet.create({
    * Dolu parselle aynı kart ölçüleri, ama kesikli kenarlık: "burası henüz
    * ekilmedi" mesajını yazıya gerek kalmadan veriyor.
    */
+  /**
+   * Boş parsel bir nesne değil, bir boşluk: gölgesi yok ve zemini sayfayla
+   * aynı aileden. Kesikli kenarlık "burası henüz ekilmedi" mesajını yazıya
+   * gerek kalmadan veriyor.
+   */
   plot: {
     overflow: 'hidden',
     borderRadius: radii.md,
-    borderWidth: 1,
+    borderWidth: borders.width,
     borderStyle: 'dashed',
-    borderColor: colors.soilLight,
-    backgroundColor: colors.soilDeep,
-    ...elevation.card,
+    borderColor: colors.ruleStrong,
+    backgroundColor: colors.surfaceSunken,
   },
   /** Dokunma anında parsel canlanır — jest karşılıksız kalmasın. */
-  plotPressed: { borderColor: colors.leaf, borderStyle: 'solid' },
+  plotPressed: { borderColor: colors.leafDeep, borderStyle: 'solid' },
   /** Dekoratif katmanlar dokunuşu yutmamalı. */
   noHit: { pointerEvents: 'none' },
   holeZone: {
@@ -92,22 +96,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  hole: { backgroundColor: colors.bark, opacity: 0.5 },
+  hole: { backgroundColor: colors.soil, opacity: 0.28 },
+  /** Yazı alt yarının ortasına oturur; kartın dibinde ölü alan kalmasın. */
   base: {
     position: 'absolute',
     left: 0,
     right: 0,
     alignItems: 'center',
-    paddingTop: spacing.xs,
+    justifyContent: 'center',
   },
   /**
-   * Etikete opaklık verilmiyor: 0.55 opaklık bu metni toprak üzerinde ~1.9
-   * kontrasta düşürüyordu. Geri çekilme hissi rengin kendisinden geliyor.
+   * Etikete opaklık verilmiyor: 0.55 opaklık bu metni ~1.9 kontrasta
+   * düşürüyordu. Geri çekilme hissi rengin kendisinden geliyor.
    */
   label: {
     ...typography.caption,
     fontSize: 10,
     lineHeight: 14,
-    color: colors.textOnDarkMuted,
+    color: colors.textMuted,
   },
 });
