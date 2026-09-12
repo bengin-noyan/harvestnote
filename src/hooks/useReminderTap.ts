@@ -30,27 +30,45 @@ export function useReminderTap(onTap: (noteId: number) => void): void {
 
     if (!initialResponseHandled) {
       initialResponseHandled = true;
-      Notifications.getLastNotificationResponseAsync()
-        .then((response) => {
-          if (cancelled || !response) return;
-          const noteId = noteIdFrom(response);
-          if (noteId !== null) onTap(noteId);
-        })
-        .catch((error: unknown) => {
-          if (__DEV__) console.warn('[reminders] acilis yaniti okunamadi', error);
-        });
+      // Bu çağrı senkron da fırlatabiliyor (bildirim modülü hiç kurulamamışsa),
+      // o yüzden .catch() tek başına yetmiyor.
+      try {
+        void Notifications.getLastNotificationResponseAsync()
+          .then((response) => {
+            if (cancelled || !response) return;
+            const noteId = noteIdFrom(response);
+            if (noteId !== null) onTap(noteId);
+          })
+          .catch((error: unknown) => {
+            if (__DEV__) console.warn('[reminders] acilis yaniti okunamadi', error);
+          });
+      } catch (error) {
+        if (__DEV__) console.warn('[reminders] acilis yaniti okunamadi', error);
+      }
     }
 
-    const subscription = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const noteId = noteIdFrom(response);
-        if (noteId !== null) onTap(noteId);
-      },
-    );
+    /**
+     * Dinleyici kurulumu senkron ve fırlatabilir: expo-notifications her
+     * ortamda tam desteklenmiyor (Expo Go'da Android tarafı kısıtlı). Bunu
+     * korumasız bırakmak, bildirimleri olmayan bir ortamda TÜM ekranı
+     * çökertiyordu — oysa kural şu: bildirim hataları yutulur, uygulama
+     * bildirimler olmadan da çalışmak zorunda.
+     */
+    let subscription: Notifications.EventSubscription | null = null;
+    try {
+      subscription = Notifications.addNotificationResponseReceivedListener(
+        (response) => {
+          const noteId = noteIdFrom(response);
+          if (noteId !== null) onTap(noteId);
+        },
+      );
+    } catch (error) {
+      if (__DEV__) console.warn('[reminders] dinleyici kurulamadi', error);
+    }
 
     return () => {
       cancelled = true;
-      subscription.remove();
+      subscription?.remove();
     };
   }, [onTap]);
 }
