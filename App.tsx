@@ -17,7 +17,13 @@ export default function App() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <FarmProvider>
-          <StatusBar style="light" />
+          {/*
+            Durum çubuğu yazıları koyu: kabuk aydınlık bir kağıt yüzey.
+            "light" bırakılırsa telefonda saat/pil beyaz kalır ve beyaz
+            başlığın üstünde görünmez olur — web'de durum çubuğu olmadığı
+            için tarayıcıda fark edilmez.
+          */}
+          <StatusBar style="dark" />
           <FarmGate />
         </FarmProvider>
       </SafeAreaProvider>
@@ -36,7 +42,7 @@ function FarmGate() {
     return (
       <View style={styles.center}>
         <Text style={styles.emoji}>🌾</Text>
-        <ActivityIndicator color={colors.leafLight} />
+        <ActivityIndicator color={colors.leafDeep} />
         <Text style={styles.muted}>Tarla hazırlanıyor…</Text>
       </View>
     );
@@ -57,20 +63,25 @@ function FarmGate() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.soilDeep },
+  /**
+   * Kök zemin uygulamanın her yerinde görünen renktir: açılış karesi, aşırı
+   * kaydırmada kalan boşluk, ekran geçişlerinin arkası. Kabukla aynı kağıt
+   * olmalı — koyu kalırsa uygulama koyu açılıp aydınlığa atlıyor.
+   */
+  root: { flex: 1, backgroundColor: colors.ground },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
     padding: spacing.xl,
-    backgroundColor: colors.soilDeep,
+    backgroundColor: colors.ground,
   },
   emoji: { fontSize: 48 },
-  title: { ...typography.title, color: colors.textOnDark },
+  title: { ...typography.title, color: colors.textPrimary },
   muted: {
     ...typography.body,
-    color: colors.textOnDarkMuted,
+    color: colors.textMuted,
     textAlign: 'center',
   },
 });

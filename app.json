@@ -4,15 +4,13 @@
     "slug": "harvestnote",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.harvestnote.app"
     },
     "android": {
-      "package": "com.harvestnote.app",
-      "edgeToEdgeEnabled": true
+      "package": "com.harvestnote.app"
     },
     "plugins": [
       "expo-sqlite",
