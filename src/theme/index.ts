@@ -1,10 +1,34 @@
 /**
- * Toprak paleti. Ekstra kütüphane yok; pixel-art hissi keskin köşeler,
- * kalın kenarlıklar ve sınırlı sayıda doygun renkle kuruluyor.
+ * Tasarım token'ları.
+ *
+ * v2 yönü: **kağıt önde, toprak katman**. Uygulama kabuğu (ekran zeminleri,
+ * başlıklar, paneller, sekme çubuğu) aydınlık ve tipografi odaklı; toprak
+ * paleti silinmedi ama rolü değişti — artık zemin değil, *mürekkep* ve *oyun
+ * yüzeyi*. Parseller hâlâ koyu toprak kartlar; farkları da bu sayede okunuyor:
+ * kağıdın üstünde duran birkaç kare toprak.
+ *
+ * Ekstra kütüphane yok; hiyerarşi renkten çok tipografi ve boşlukla kuruluyor.
  */
+import { StyleSheet } from 'react-native';
 
 export const colors = {
-  /* Toprak */
+  /* ---------------------------------------------------------------- */
+  /* Kağıt — uygulama kabuğu                                          */
+  /* ---------------------------------------------------------------- */
+  /** Ekran zemini. Nötr gri değil: toprağa doğru hafif kırık. */
+  ground: '#faf8f5',
+  /** Kart, panel, başlık şeridi. */
+  surface: '#ffffff',
+  /** Girinti hissi veren yüzey: metin kutusu, sekme zemini, banner. */
+  surfaceSunken: '#f2eee8',
+  /** Ayraç çizgisi — kalın kenarlığın yerini alır. */
+  rule: '#e6dfd4',
+  /** Vurgulu ayraç / pasif kenarlık. */
+  ruleStrong: '#d5cabb',
+
+  /* ---------------------------------------------------------------- */
+  /* Toprak — oyun yüzeyi ve mürekkep                                 */
+  /* ---------------------------------------------------------------- */
   bark: '#241a12',
   soilDeep: '#2f2118',
   soil: '#4a3527',
@@ -15,6 +39,11 @@ export const colors = {
   grass: '#3f6b32',
   leaf: '#6aa84f',
   leafLight: '#9ccc65',
+  /**
+   * Aydınlık zeminde okunabilen yeşil. `leaf` kağıt üzerinde ~2.2 kontrasta
+   * düşüyor; aksan rengi olarak kullanılacak her yerde bu kullanılmalı.
+   */
+  leafDeep: '#4f7d3a',
 
   /* Olgun / hasat */
   gold: '#e0a828',
@@ -30,9 +59,16 @@ export const colors = {
   parchment: '#f7efe0',
   parchmentDark: '#e6d7bd',
 
-  /* Metin */
-  textPrimary: '#2f2118',
+  /* ---------------------------------------------------------------- */
+  /* Metin                                                            */
+  /* ---------------------------------------------------------------- */
+  /** Kağıt üzerinde gövde ve başlık. Toprağın en koyu tonu = mürekkep. */
+  textPrimary: '#241a12',
+  /** İkincil metin: alt başlık, açıklama. */
+  textSecondary: '#4d3b2c',
+  /** Üçüncül: etiket, ipucu, zaman damgası. */
   textMuted: '#7a6650',
+  /** Toprak yüzeyler üzerinde (parsel, ipucu balonu). */
   textOnDark: '#f3e5c8',
   textOnDarkMuted: '#bda887',
 
@@ -48,55 +84,75 @@ export const spacing = {
   xxl: 32,
 } as const;
 
-/** Pixel-art hissi için köşeler bilinçli olarak küçük tutuldu. */
+/**
+ * Köşeler. Piksel hissi bırakıldı: kabuk yumuşadı, ama parseller hâlâ
+ * `md` kullanıyor — toprak kart kağıt panelden biraz daha keskin kalsın.
+ */
 export const radii = {
-  sm: 4,
-  md: 6,
-  lg: 10,
+  sm: 6,
+  md: 10,
+  lg: 16,
   pill: 999,
 } as const;
 
 export const borders = {
-  width: 2,
-  thick: 3,
+  /**
+   * Ayraçlar için: cihazın çizebildiği en ince çizgi. Kağıt düzende
+   * hiyerarşiyi kenarlık değil boşluk kuruyor — çizgi yalnızca ayırıyor.
+   */
+  hairline: StyleSheet.hairlineWidth,
+  width: 1,
+  /** Yalnızca oyun yüzeylerinde (parsel, kiler kartı) kalın kenarlık kalır. */
+  thick: 2,
 } as const;
 
 /**
- * Yükseklik katmanları. Toprak paleti düşük kontrastlı olduğu için kartların
- * zeminden ayrılması kenarlığa bırakılamıyordu; gölge bu işi kenarlığı
- * kalınlaştırmadan yapıyor. Android'de gölge yalnızca zemini olan view'da
- * çizilir — `elevation` verilen her yüzeye `backgroundColor` de gerekir.
+ * Yükseklik katmanları. Aydınlık zeminde gölge koyu paletteki kadar
+ * çalışmıyor; opaklık düştü, yarıçap arttı — gölge artık "ayırıcı" değil,
+ * yalnızca yüzeyin kağıttan bir tık yukarıda olduğunu söylüyor.
+ *
+ * Android'de gölge yalnızca zemini olan view'da çizilir — `elevation`
+ * verilen her yüzeye `backgroundColor` de gerekir.
  */
 export const elevation = {
-  /** Izgaradaki parsel: toprağın üstünde durduğu anlaşılacak kadar. */
+  /** Izgaradaki parsel, kiler kartı. */
   card: {
-    shadowColor: '#120c07',
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowColor: '#3a2a1e',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    elevation: 2,
   },
   /** Ekranın üstüne çıkan yüzeyler: panel, ipucu balonu. */
   overlay: {
-    shadowColor: '#120c07',
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: -4 },
-    elevation: 12,
+    shadowColor: '#241a12',
+    shadowOpacity: 0.22,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: -6 },
+    elevation: 14,
   },
 } as const;
 
 /**
  * Tipografi ölçeği. Her basamak kendi satır yüksekliğini taşır: sarmalanan
- * başlıklar (kart başlığı iki satıra kadar çıkıyor) satır aralığı verilmediğinde
- * platformdan platforma değişiyordu.
+ * başlıklar satır aralığı verilmediğinde platformdan platforma değişiyordu.
  *
  * `fontSize`'ı ezen bir stil `lineHeight`'ı da ezmeli — yoksa küçük metin
  * kendinden büyük bir satır kutusunda yüzer.
+ *
+ * v2'de ölçek iki uçtan da açıldı: `display` ekran başlıkları için,
+ * `bodyLarge` okunacak metin için (blok editörü bunu kullanacak). Başlıkların
+ * harf aralığı negatife çekildi — büyük puntoda sıkışık başlık daha sakin
+ * duruyor; `caption` ise pozitif kaldı, küçük puntoda nefes gerekiyor.
  */
 export const typography = {
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: 0.5 },
-  heading: { fontSize: 16, lineHeight: 21, fontWeight: '700', letterSpacing: 0.3 },
-  body: { fontSize: 14, lineHeight: 19, fontWeight: '500' },
+  display: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.3 },
+  heading: { fontSize: 16, lineHeight: 21, fontWeight: '700', letterSpacing: -0.1 },
+  /** Okunacak metin: ferah satır aralığı. Faz 1'in blokları buraya oturacak. */
+  bodyLarge: { fontSize: 16, lineHeight: 26, fontWeight: '400' },
+  body: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   caption: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.4 },
+  /** Büyük harfli alan etiketi. */
+  label: { fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.9 },
 } as const;

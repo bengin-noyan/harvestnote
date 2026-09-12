@@ -25,14 +25,18 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
+/**
+ * Tonlar aydınlık yüzeyde okunacak şekilde seçildi. `ghost` özellikle
+ * dikkat ister: metni `textOnDark` iken kağıt panelde görünmez oluyordu.
+ */
 const TONES: Record<
   PixelButtonTone,
   { bg: string; border: string; text: string }
 > = {
-  primary: { bg: colors.leaf, border: colors.grass, text: colors.bark },
+  primary: { bg: colors.leafDeep, border: colors.grass, text: colors.surface },
   soil: { bg: colors.soilLight, border: colors.soilDeep, text: colors.textOnDark },
-  ghost: { bg: 'transparent', border: colors.soilLight, text: colors.textOnDark },
-  danger: { bg: colors.danger, border: '#7d2f1e', text: colors.parchment },
+  ghost: { bg: 'transparent', border: colors.ruleStrong, text: colors.textSecondary },
+  danger: { bg: colors.danger, border: '#7d2f1e', text: colors.surface },
 };
 
 export function PixelButton({

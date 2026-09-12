@@ -11,7 +11,8 @@ interface Props {
   onDark?: boolean;
 }
 
-export function EmptyState({ emoji, title, message, onDark = true }: Props) {
+/** `onDark` yalnızca toprak yüzeylerde gerekir; kabuk artık aydınlık. */
+export function EmptyState({ emoji, title, message, onDark = false }: Props) {
   return (
     <View style={styles.wrapper}>
       <Text style={styles.emoji}>{emoji}</Text>

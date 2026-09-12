@@ -11,6 +11,7 @@ import { SEED_CATALOG } from '../game/config';
 import { msUntilWeedy, resolveStage, STAGE_VISUALS } from '../game/stages';
 import { reminderTimeFor } from '../notifications/weedReminders';
 import { borders, colors, radii, spacing, typography } from '../theme';
+import { STAGE_COLORS } from '../theme/stageColors';
 import type { Note, UpdateNoteInput } from '../types';
 import { formatDuration, formatRelative } from '../utils/format';
 import { BottomSheet } from './BottomSheet';
@@ -79,7 +80,7 @@ export function NoteDetailSheet({
       {shown ? (
         <ScrollView keyboardShouldPersistTaps="handled">
           <View style={styles.statusRow}>
-            <View style={[styles.pill, { borderColor: visual.border }]}>
+            <View style={[styles.pill, { borderColor: STAGE_COLORS[stage].accent }]}>
               <Text style={styles.pillText}>
                 {visual.emoji} {visual.label}
               </Text>
@@ -174,25 +175,29 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   pill: {
     borderWidth: borders.width,
-    borderColor: colors.parchmentDark,
+    borderColor: colors.ruleStrong,
     borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
   },
-  pillText: { ...typography.caption, color: colors.textPrimary },
+  pillText: { ...typography.caption, color: colors.textSecondary },
   label: {
-    ...typography.caption,
+    ...typography.label,
     color: colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: spacing.xs,
     marginTop: spacing.lg,
   },
+  /**
+   * Metin kutusu kenarlıkla değil girintili zeminle anlatılıyor — form
+   * alanları böylece sayfanın içinde durur, üstüne çizilmiş gibi değil.
+   */
   input: {
-    ...typography.body,
+    ...typography.bodyLarge,
     color: colors.textPrimary,
-    backgroundColor: colors.parchmentDark,
-    borderWidth: borders.width,
-    borderColor: colors.textMuted,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: borders.hairline,
+    borderColor: colors.rule,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
@@ -209,8 +214,8 @@ const styles = StyleSheet.create({
   dangerZone: {
     marginTop: spacing.xl,
     paddingTop: spacing.lg,
-    borderTopWidth: borders.width,
-    borderTopColor: colors.parchmentDark,
+    borderTopWidth: borders.hairline,
+    borderTopColor: colors.rule,
     marginBottom: spacing.md,
   },
 });

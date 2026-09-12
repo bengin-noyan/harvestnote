@@ -40,8 +40,9 @@ export const QUALITY_STYLES: Record<HarvestQuality, QualityStyle> = {
   normal: {
     label: 'Normal',
     badge: '🧺',
-    bg: colors.parchment,
-    border: colors.soilLight,
+    // `parchment` yeni sayfa zeminine çok yakındı; kart zeminden ayrılsın.
+    bg: colors.surface,
+    border: colors.ruleStrong,
     text: colors.textPrimary,
     muted: colors.textMuted,
     glows: false,

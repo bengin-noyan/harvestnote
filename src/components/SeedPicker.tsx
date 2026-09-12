@@ -57,15 +57,20 @@ export function SeedPicker({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   row: { gap: spacing.sm, paddingVertical: spacing.xs, paddingRight: spacing.lg },
+  /**
+   * Seçilmemiş tohum sakin bir zeminde durur; seçim kenarlıkla değil
+   * altın dolguyla anlatılır — dört beş çip yan yanayken kalın kenarlıklar
+   * hepsini birden öne çıkarıyordu.
+   */
   chip: {
     width: 108,
     alignItems: 'center',
     gap: 2,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
-    backgroundColor: colors.parchmentDark,
-    borderWidth: borders.thick,
-    borderColor: colors.parchmentDark,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: borders.width,
+    borderColor: 'transparent',
     borderRadius: radii.md,
   },
   chipSelected: {
@@ -73,7 +78,7 @@ const styles = StyleSheet.create({
     borderColor: colors.goldDeep,
   },
   emoji: { fontSize: 30 },
-  label: { ...typography.heading, color: colors.textMuted },
+  label: { ...typography.heading, color: colors.textSecondary },
   labelSelected: { color: colors.textPrimary },
   hint: {
     ...typography.caption,

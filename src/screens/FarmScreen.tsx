@@ -34,7 +34,8 @@ import { useNotes } from '../hooks/useNotes';
 import { useNow } from '../hooks/useNow';
 import { useReminderTap } from '../hooks/useReminderTap';
 import { useFarm } from '../providers/FarmProvider';
-import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { borders, colors, radii, spacing, typography } from '../theme';
+import { STAGE_COLORS } from '../theme/stageColors';
 import type { Note } from '../types';
 
 const GRID_PADDING = spacing.md;
@@ -238,7 +239,7 @@ export function FarmScreen() {
 
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.leafLight} />
+          <ActivityIndicator color={colors.leafDeep} />
         </View>
       ) : (
         <FlatList
@@ -273,10 +274,16 @@ export function FarmScreen() {
   );
 }
 
+/**
+ * Aşama sayacı. Kağıt zeminde kenarlık değil, solundaki renk noktası
+ * aşamayı söylüyor — dört çip yan yana dizildiğinde dört ayrı kutu yerine
+ * tek bir satır gibi okunuyor.
+ */
 function StatChip({ stage, count }: { stage: VisualStage; count: number }) {
   const visual = STAGE_VISUALS[stage];
   return (
-    <View style={[styles.chip, { borderColor: visual.border }]}>
+    <View style={styles.chip}>
+      <View style={[styles.chipDot, { backgroundColor: STAGE_COLORS[stage].accent }]} />
       <Text style={styles.chipText}>
         {visual.emoji} {count}
       </Text>
@@ -285,47 +292,43 @@ function StatChip({ stage, count }: { stage: VisualStage; count: number }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.soilDeep },
+  root: { flex: 1, backgroundColor: colors.ground },
+  /**
+   * Başlık şeridi kağıttan bir tık yukarıda: dolgu farkı değil, altındaki
+   * saç teli çizgi ayırıyor. Kalın kenarlık artık yalnızca parsellerde.
+   */
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.bark,
-    borderBottomWidth: borders.thick,
-    borderBottomColor: colors.soil,
+    backgroundColor: colors.surface,
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
   },
   /** Zemin tam genişlikte kalır, içerik ızgarayla aynı hizaya oturur. */
   headerInner: { width: '100%', alignSelf: 'center', gap: spacing.md },
   headerTitleBlock: { flex: 1, gap: 2 },
-  title: { ...typography.title, color: colors.textOnDark },
-  subtitle: { ...typography.caption, color: colors.textOnDarkMuted },
-  statRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
-  chip: {
-    borderWidth: borders.width,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 3,
-    backgroundColor: colors.soilDeep,
-  },
-  chipText: { ...typography.caption, color: colors.textOnDark },
+  title: { ...typography.display, color: colors.textPrimary },
+  subtitle: { ...typography.caption, color: colors.textMuted },
+  statRow: { flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  chipDot: { width: 6, height: 6, borderRadius: 3 },
+  chipText: { ...typography.caption, color: colors.textSecondary },
   banner: {
-    backgroundColor: colors.soil,
-    borderWidth: borders.width,
-    borderColor: colors.soilLight,
+    backgroundColor: colors.surfaceSunken,
     borderRadius: radii.md,
     padding: spacing.md,
     gap: 2,
-    ...elevation.card,
   },
-  /** Dokunulabilir her yüzeyin basış karşılığı aynı: kenarlık canlanır. */
-  pressedSurface: { borderColor: colors.leaf },
-  bannerTitle: { ...typography.heading, color: colors.goldLight },
-  bannerBody: { ...typography.caption, color: colors.textOnDarkMuted },
+  /** Dokunulabilir her yüzeyin basış karşılığı aynı: zemin koyulaşır. */
+  pressedSurface: { backgroundColor: colors.rule },
+  bannerTitle: { ...typography.heading, color: colors.textPrimary },
+  bannerBody: { ...typography.caption, color: colors.textMuted },
   devButton: {
     alignSelf: 'flex-start',
-    borderWidth: 1,
+    borderWidth: borders.width,
     borderStyle: 'dashed',
-    borderColor: colors.soilLight,
+    borderColor: colors.ruleStrong,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
@@ -334,7 +337,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 10,
     lineHeight: 14,
-    color: colors.textOnDarkMuted,
+    color: colors.textMuted,
   },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flex: 1, width: '100%', alignSelf: 'center' },

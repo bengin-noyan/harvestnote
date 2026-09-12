@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { colors, elevation, radii, spacing, typography } from '../theme';
 import { durations, easings } from '../theme/motion';
 
 interface Props {
@@ -62,14 +62,16 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
 
 const styles = StyleSheet.create({
   noHit: { pointerEvents: 'none' },
+  /**
+   * Balon koyu kaldı: aydınlık zeminde en yüksek kontrastı o veriyor ve
+   * geçici bir bildirim olduğu anlaşılıyor. Kenarlık gereksizleşti.
+   */
   toast: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     bottom: spacing.lg,
-    backgroundColor: colors.soilDeep,
-    borderWidth: borders.width,
-    borderColor: colors.soilLight,
+    backgroundColor: colors.bark,
     borderRadius: radii.md,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,

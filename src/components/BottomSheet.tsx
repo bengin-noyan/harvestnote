@@ -145,12 +145,13 @@ const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
   // box-none: panelin disindaki bosluk arkadaki backdrop'a tiklamayi gecirmeli.
   avoider: { justifyContent: 'flex-end', pointerEvents: 'box-none' },
+  /**
+   * Panel artık kendi kenarlığıyla değil, gölgesi ve köşesiyle kağıttan
+   * ayrılıyor: altındaki ekran zaten aydınlık, kalın çerçeve onu kutuya
+   * çeviriyordu.
+   */
   sheet: {
-    backgroundColor: colors.parchment,
-    borderTopWidth: borders.thick,
-    borderLeftWidth: borders.thick,
-    borderRightWidth: borders.thick,
-    borderColor: colors.soilDeep,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     paddingBottom: spacing.xl,
@@ -162,14 +163,14 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderBottomWidth: borders.width,
-    borderBottomColor: colors.parchmentDark,
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
   },
   handle: {
     width: 44,
     height: 5,
     borderRadius: radii.pill,
-    backgroundColor: colors.parchmentDark,
+    backgroundColor: colors.ruleStrong,
     marginBottom: spacing.sm,
   },
   title: { ...typography.title, color: colors.textPrimary },

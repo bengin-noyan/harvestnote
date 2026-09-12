@@ -51,7 +51,7 @@ export function InventoryScreen() {
 
       {loading ? (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.gold} />
+          <ActivityIndicator color={colors.goldDeep} />
         </View>
       ) : (
         <FlatList
@@ -78,15 +78,15 @@ export function InventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.parchmentDark },
+  root: { flex: 1, backgroundColor: colors.ground },
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
     gap: spacing.md,
-    backgroundColor: colors.bark,
-    borderBottomWidth: borders.thick,
-    borderBottomColor: colors.soil,
+    backgroundColor: colors.surface,
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
   },
   headerTop: {
     flexDirection: 'row',
@@ -95,26 +95,25 @@ const styles = StyleSheet.create({
   },
   headerTitleBlock: { flex: 1, gap: 2 },
   headerEmoji: { fontSize: 30 },
-  title: { ...typography.title, color: colors.goldLight },
-  subtitle: { ...typography.caption, color: colors.textOnDarkMuted },
+  title: { ...typography.display, color: colors.textPrimary },
+  subtitle: { ...typography.caption, color: colors.textMuted },
   shelf: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  /** Raf sayacı: kenarlıksız, yalnızca hafif bir zeminle ayrılan bir öbek. */
   shelfItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.soilDeep,
-    borderWidth: borders.width,
-    borderColor: colors.soil,
+    backgroundColor: colors.surfaceSunken,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
   shelfEmoji: { fontSize: 16 },
-  shelfCount: { ...typography.caption, color: colors.textOnDark },
+  shelfCount: { ...typography.caption, color: colors.textSecondary },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { padding: spacing.lg, paddingBottom: spacing.xxl },
   separator: { height: spacing.md },

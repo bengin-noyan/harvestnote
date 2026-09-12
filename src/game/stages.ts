@@ -61,14 +61,16 @@ export function msUntilWeedy(
   return note.last_tended_at + rules.weedThresholdMs - now;
 }
 
+/**
+ * Aşamanın renk taşımayan görsel kimliği: simge, etiket, jest ipucu.
+ * Renkler bilinçli olarak burada değil — bkz. src/theme/stageColors.ts.
+ * Bu modül saf kalmalı (DB, React ve tema importu yok) ki `node stages.ts`
+ * ile doğrudan çalıştırılıp doğrulanabilsin.
+ */
 export interface StageVisual {
   /** Aşamanın simgesi. 'harvestable' ürünün kendi simgesini kullanır. */
   emoji: string;
   label: string;
-  /** Hücre zemini. */
-  tile: string;
-  /** Hücre kenarlığı. */
-  border: string;
   /** Aşamanın kısa etkileşim ipucu. */
   hint: string;
 }
@@ -77,29 +79,21 @@ export const STAGE_VISUALS: Record<VisualStage, StageVisual> = {
   planted: {
     emoji: '🌱',
     label: 'Ekildi',
-    tile: '#4a3527',
-    border: '#6b4c37',
     hint: 'Filizleniyor',
   },
   growing: {
     emoji: '🌿',
     label: 'Büyüyor',
-    tile: '#3f4b2c',
-    border: '#6aa84f',
     hint: 'Olgunlaşıyor',
   },
   harvestable: {
     emoji: '🌻',
     label: 'Hasada hazır',
-    tile: '#5c4a1e',
-    border: '#e0a828',
     hint: 'Yukarı kaydır ↑',
   },
   weedy: {
     emoji: '🥀',
     label: 'Ot bastı',
-    tile: '#1c2416',
-    border: '#42552f',
     hint: 'Yana kaydır ↔',
   },
 };

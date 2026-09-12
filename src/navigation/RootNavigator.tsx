@@ -1,12 +1,12 @@
 /**
  * Alt sekmeli navigasyon: Tarla ve Kiler.
  *
- * Sekme çubuğu toprak paletiyle boyandı; ikonlar için ekstra bir ikon
- * kütüphanesi kurmak yerine emoji kullanılıyor (proje kuralı: gereksiz
- * bağımlılık yok).
+ * Sekme çubuğu kağıt yüzeyinde durur ve tarladan yalnızca ince bir çizgiyle
+ * ayrılır; ikonlar için ekstra bir ikon kütüphanesi kurmak yerine emoji
+ * kullanılıyor (proje kuralı: gereksiz bağımlılık yok).
  */
 import {
-  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   type Theme,
 } from '@react-navigation/native';
@@ -16,7 +16,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { FarmScreen } from '../screens/FarmScreen';
 import { InventoryScreen } from '../screens/InventoryScreen';
-import { borders, colors, spacing, typography } from '../theme';
+import { borders, colors, radii, spacing, typography } from '../theme';
 
 export type RootTabParamList = {
   Farm: undefined;
@@ -25,18 +25,18 @@ export type RootTabParamList = {
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
-// DarkTheme'i yayarak kuruyoruz: React Navigation 6 ve 7'nin Theme tipleri
+// DefaultTheme'i yayarak kuruyoruz: React Navigation 6 ve 7'nin Theme tipleri
 // farkli (v7 ayrica `fonts` istiyor), spread ikisinde de derleniyor.
 const navigationTheme: Theme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
-    primary: colors.leaf,
-    background: colors.soilDeep,
-    card: colors.bark,
-    text: colors.textOnDark,
-    border: colors.soil,
-    notification: colors.gold,
+    ...DefaultTheme.colors,
+    primary: colors.leafDeep,
+    background: colors.ground,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: colors.rule,
+    notification: colors.goldDeep,
   },
 };
 
@@ -56,8 +56,8 @@ export function RootNavigator() {
           headerShown: false,
           tabBarStyle: styles.tabBar,
           tabBarLabelStyle: styles.tabLabel,
-          tabBarActiveTintColor: colors.goldLight,
-          tabBarInactiveTintColor: colors.textOnDarkMuted,
+          tabBarActiveTintColor: colors.textPrimary,
+          tabBarInactiveTintColor: colors.textMuted,
         }}
       >
         <Tab.Screen
@@ -87,9 +87,9 @@ export function RootNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: colors.bark,
-    borderTopWidth: borders.thick,
-    borderTopColor: colors.soil,
+    backgroundColor: colors.surface,
+    borderTopWidth: borders.hairline,
+    borderTopColor: colors.rule,
     height: 64,
     paddingBottom: spacing.sm,
     paddingTop: spacing.xs,
@@ -100,8 +100,9 @@ const styles = StyleSheet.create({
     height: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 4,
+    borderRadius: radii.sm,
   },
-  iconFocused: { backgroundColor: colors.soil },
+  /** Seçili sekme dolgu değil, hafif bir zeminle işaretlenir. */
+  iconFocused: { backgroundColor: colors.surfaceSunken },
   iconText: { fontSize: 17 },
 });

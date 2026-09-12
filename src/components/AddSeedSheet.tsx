@@ -111,18 +111,18 @@ export function AddSeedSheet({ visible, onClose, onPlant }: Props) {
 
 const styles = StyleSheet.create({
   label: {
-    ...typography.caption,
+    ...typography.label,
     color: colors.textMuted,
     textTransform: 'uppercase',
     marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
   input: {
-    ...typography.body,
+    ...typography.bodyLarge,
     color: colors.textPrimary,
-    backgroundColor: colors.parchmentDark,
-    borderWidth: borders.width,
-    borderColor: colors.textMuted,
+    backgroundColor: colors.surfaceSunken,
+    borderWidth: borders.hairline,
+    borderColor: colors.rule,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
