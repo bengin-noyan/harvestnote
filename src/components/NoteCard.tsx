@@ -38,7 +38,14 @@ import {
   stageEmoji,
   STAGE_VISUALS,
 } from '../game/stages';
-import { colors, elevation, radii, spacing, typography } from '../theme';
+import {
+  colors,
+  DENSE_FONT_SCALE_CAP,
+  elevation,
+  radii,
+  spacing,
+  typography,
+} from '../theme';
 import { durations, easings, springs } from '../theme/motion';
 import type { Note } from '../types';
 import { PlotGround, plotMetrics } from './PlotGround';
@@ -319,12 +326,17 @@ function NoteCardComponent({
             { top: ground, height: size - ground },
           ]}
         >
-          <Text style={styles.title} numberOfLines={2}>
+          <Text
+            style={styles.title}
+            numberOfLines={2}
+            maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
+          >
             {note.title}
           </Text>
           <Text
             style={[styles.caption, isHarvestable ? styles.captionReady : null]}
             numberOfLines={1}
+            maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
           >
             {isHarvestable ? '↑ hasat' : `${seed?.emoji ?? ''} ${visual.label}`}
           </Text>
@@ -348,10 +360,18 @@ function NoteCardComponent({
             <Text style={{ fontSize: Math.round(size * 0.2) }}>🥀</Text>
           </View>
           <View style={[styles.base, { top: ground, height: size - ground }]}>
-            <Text style={styles.weedTitle} numberOfLines={2}>
+            <Text
+              style={styles.weedTitle}
+              numberOfLines={2}
+              maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
+            >
               {note.title}
             </Text>
-            <Text style={styles.weedHint} numberOfLines={1}>
+            <Text
+              style={styles.weedHint}
+              numberOfLines={1}
+              maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
+            >
               ↔ temizle
             </Text>
           </View>

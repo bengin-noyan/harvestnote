@@ -9,7 +9,14 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { borders, colors, radii, spacing, typography } from '../theme';
+import {
+  borders,
+  colors,
+  DENSE_FONT_SCALE_CAP,
+  radii,
+  spacing,
+  typography,
+} from '../theme';
 import { PlotGround, plotMetrics } from './PlotGround';
 
 interface Props {
@@ -60,7 +67,9 @@ export function EmptyPlot({ size, index, onPress }: Props) {
       <View
         style={[styles.base, styles.noHit, { top: ground, height: size - ground }]}
       >
-        <Text style={styles.label}>+ ek</Text>
+        <Text style={styles.label} maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}>
+          + ek
+        </Text>
       </View>
     </Pressable>
   );

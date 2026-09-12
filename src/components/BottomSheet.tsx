@@ -21,6 +21,7 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -54,6 +55,11 @@ export function BottomSheet({
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
   const dragY = useSharedValue(0);
+  /**
+   * Panel ekranın en altına yapışır; jest çubuğu olan telefonlarda son buton
+   * onun altında kalıyordu. Sabit dolguya alt güvenli alan ekleniyor.
+   */
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) {
@@ -121,7 +127,13 @@ export function BottomSheet({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.avoider}
         >
-          <Animated.View style={[styles.sheet, sheetStyle]}>
+          <Animated.View
+            style={[
+              styles.sheet,
+              { paddingBottom: spacing.xl + insets.bottom },
+              sheetStyle,
+            ]}
+          >
             <GestureDetector gesture={dragGesture}>
               <View style={styles.header}>
                 <View style={styles.handle} />
@@ -143,8 +155,15 @@ export function BottomSheet({
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
-  // box-none: panelin disindaki bosluk arkadaki backdrop'a tiklamayi gecirmeli.
-  avoider: { justifyContent: 'flex-end', pointerEvents: 'box-none' },
+  /**
+   * box-none: panelin disindaki bosluk arkadaki backdrop'a tiklamayi gecirmeli.
+   *
+   * `flex: 1` şart: panelin `maxHeight: '88%'` kuralı yüzde olduğu için
+   * ebeveynin kesin bir yüksekliği olmadan çözülmüyordu. Kesin yükseklik
+   * olmayınca panel içeriği kadar büyüyüp ekranı taşıyor ve başlığı yukarı
+   * itiyordu — yatay modda ve klavye açıkken küçük ekranlarda görünüyor.
+   */
+  avoider: { flex: 1, justifyContent: 'flex-end', pointerEvents: 'box-none' },
   /**
    * Panel artık kendi kenarlığıyla değil, gölgesi ve köşesiyle kağıttan
    * ayrılıyor: altındaki ekran zaten aydınlık, kalın çerçeve onu kutuya
@@ -154,7 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
-    paddingBottom: spacing.xl,
+    // paddingBottom satır içinde: alt güvenli alana bağlı.
     maxHeight: '88%',
     ...elevation.overlay,
   },

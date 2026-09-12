@@ -156,3 +156,13 @@ export const typography = {
   /** Büyük harfli alan etiketi. */
   label: { fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.9 },
 } as const;
+
+/**
+ * Sabit geometrili yüzeylerde sistem yazı tipi büyütmesinin üst sınırı.
+ *
+ * Parsel kartının yüksekliği ızgaradan geliyor ve başlığı `numberOfLines={2}`
+ * ile sınırlı; sistem yazısı %200'e çıktığında metin kutuya sığmayıp
+ * kırpılıyor. Okunacak yüzeylerde (not detayı, kiler kartı) sınır YOK —
+ * erişilebilirlik ayarı oralarda sonuna kadar çalışmalı.
+ */
+export const DENSE_FONT_SCALE_CAP = 1.3;

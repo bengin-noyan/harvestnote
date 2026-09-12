@@ -13,6 +13,7 @@ import {
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FarmScreen } from '../screens/FarmScreen';
 import { InventoryScreen } from '../screens/InventoryScreen';
@@ -48,14 +49,34 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   );
 }
 
+/** Sekme çubuğunun jest çubuğu hariç kendi yüksekliği. */
+const TAB_BAR_HEIGHT = 60;
+
 export function RootNavigator() {
+  /**
+   * Alt güvenli alan elle ekleniyor: `tabBarStyle`'a sabit bir `height`
+   * verildiği anda React Navigation'ın insets'i yüksekliğe kendi ekleme
+   * davranışı devre dışı kalıyor ve çubuk jest çubuğunun altında eziliyor.
+   * Sabit yüksekliği koruyup insets'i kendimiz eklemek ikisini de sağlıyor.
+   */
+  const insets = useSafeAreaInsets();
+
   return (
     <NavigationContainer theme={navigationTheme}>
       <Tab.Navigator
         screenOptions={{
           headerShown: false,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: [
+            styles.tabBar,
+            {
+              height: TAB_BAR_HEIGHT + insets.bottom,
+              paddingBottom: insets.bottom + spacing.xs,
+            },
+          ],
           tabBarLabelStyle: styles.tabLabel,
+          // Sekme etiketi sabit yükseklikte bir kutuda; sistem yazı tipi
+          // büyütmesi burada kırpılmaya yol açıyor, anlamı zaten ikon taşıyor.
+          tabBarAllowFontScaling: false,
           tabBarActiveTintColor: colors.textPrimary,
           tabBarInactiveTintColor: colors.textMuted,
         }}
@@ -86,12 +107,11 @@ export function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
+  /** Yükseklik ve alt dolgu güvenli alana göre satır içinde veriliyor. */
   tabBar: {
     backgroundColor: colors.surface,
     borderTopWidth: borders.hairline,
     borderTopColor: colors.rule,
-    height: 64,
-    paddingBottom: spacing.sm,
     paddingTop: spacing.xs,
   },
   tabLabel: { ...typography.caption },
