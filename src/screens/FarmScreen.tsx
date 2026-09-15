@@ -61,7 +61,7 @@ type Cell =
   | { key: string; kind: 'empty' };
 
 export function FarmScreen() {
-  const { timeSkip, dismissTimeSkip, notifyChange } = useFarm();
+  const { timeSkip, dismissTimeSkip, notifyScheduleChanged } = useFarm();
   const { notes, loading, plant, tend, harvest, save, remove } = useNotes();
   const now = useNow();
   const { width } = useWindowDimensions();
@@ -159,9 +159,9 @@ export function FarmScreen() {
   const handleAgeField = useCallback(async () => {
     await devAgeNotes(DAY);
     await runTimeSkip({ force: true });
-    notifyChange();
+    notifyScheduleChanged();
     setHint('Zaman makinesi: tarla 1 gün yaşlandı. ⏩');
-  }, [notifyChange]);
+  }, [notifyScheduleChanged]);
 
   const handleAdd = useCallback(() => setAdding(true), []);
 

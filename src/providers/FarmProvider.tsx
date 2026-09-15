@@ -24,7 +24,10 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { bootstrapApp } from '../bootstrap';
 import { getFieldStats, type FieldStats } from '../db/repositories/notes';
 import { runTimeSkip } from '../game/timeSkip';
-import { syncWeedReminders } from '../notifications/weedReminders';
+import {
+  flushReminderSync,
+  requestReminderSync,
+} from '../notifications/weedReminders';
 import type { TimeSkipResult } from '../types';
 
 export type FarmStatus = 'loading' | 'ready' | 'error';
@@ -40,8 +43,25 @@ export interface FarmContextValue {
    * listelerini tazeler — global bir store kurmadan tek yönlü akış.
    */
   revision: number;
-  /** Bir yazma sonrası çağrılır: sayaçları tazeler, ekranları tetikler. */
-  notifyChange: () => void;
+  /**
+   * Bir yazma sonrası çağrılır: sayaçları tazeler, ekranları tetikler ve ot
+   * hatırlatmalarını DB ile eşitler.
+   *
+   * Notun *zamanlamasına* dokunan her şey bunu kullanmalı: ekim, ot temizleme,
+   * hasat, silme, düzenleme (düzenleme `last_tended_at`'i tazeliyor) ve zaman
+   * atlaması. Şüphedeysen bunu seç — fazladan eşitleme ucuz (debounce'lu),
+   * eksik eşitleme "hasat edildi ama bildirimi hâlâ kurulu" demek.
+   */
+  notifyScheduleChanged: () => void;
+  /**
+   * Hiçbir notun ot saatini kaydırmayan yazmalar için: yalnızca sayaçları ve
+   * listeleri tazeler, bildirim katmanına hiç dokunmaz.
+   *
+   * Bugünkü tek kullanıcısı kilerden ürün atmak. Asıl gerekçesi Faz 1: blok
+   * editörü otomatik kaydetmeye başladığında içerik yazmalarının bildirim
+   * yolunu tetiklememesi gerekiyor.
+   */
+  notifyContentChanged: () => void;
   /** Tarla sayaçlarını tazeler (ekim/hasat sonrası çağrılır). */
   refreshStats: () => Promise<void>;
   /** Açılış başarısız olduysa yeniden dener. */
@@ -61,23 +81,40 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<FieldStats>(EMPTY_STATS);
   const [attempt, setAttempt] = useState(0);
   const [revision, setRevision] = useState(0);
+  // Ayrı sayaç: hangi yazmaların bildirim katmanını ilgilendirdiğini ekranlar
+  // değil, çağrılan kanal söylüyor. `revision` her ikisinde de artar, böylece
+  // listeler her değişiklikte tazelenmeye devam eder.
+  const [scheduleRevision, setScheduleRevision] = useState(0);
 
   const refreshStats = useCallback(async () => {
     setStats(await getFieldStats());
   }, []);
 
-  const notifyChange = useCallback(() => setRevision((n) => n + 1), []);
+  const notifyContentChanged = useCallback(() => {
+    setRevision((n) => n + 1);
+  }, []);
 
-  // Her değişiklikte sayaçlar tazelensin ve ot hatırlatmaları DB ile
-  // eşitlensin. Tek noktadan türetmek, "hasat edildi ama bildirimi hâlâ
-  // kurulu" gibi kaçakları imkânsız kılıyor.
+  const notifyScheduleChanged = useCallback(() => {
+    setRevision((n) => n + 1);
+    setScheduleRevision((n) => n + 1);
+  }, []);
+
+  // Her değişiklikte sayaçlar tazelensin.
   useEffect(() => {
     if (status !== 'ready' || revision === 0) return;
     refreshStats().catch((err: unknown) => {
       if (__DEV__) console.warn('[farm] sayaclar tazelenemedi', err);
     });
-    void syncWeedReminders();
   }, [revision, status, refreshStats]);
+
+  // Zamanlamaya dokunan bir değişiklik oldu: kurulu bildirimleri DB'den
+  // yeniden türet. Tek noktadan türetmek, "hasat edildi ama bildirimi hâlâ
+  // kurulu" gibi kaçakları imkânsız kılıyor. İstek debounce'lu — arka arkaya
+  // yazmalar tek eşitlemede birleşir (bkz. requestReminderSync).
+  useEffect(() => {
+    if (status !== 'ready' || scheduleRevision === 0) return;
+    requestReminderSync();
+  }, [scheduleRevision, status]);
 
   // --- Cold start -------------------------------------------------------
   useEffect(() => {
@@ -104,7 +141,7 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
     };
   }, [attempt]);
 
-  // --- Warm start (arka plandan dönüş) ----------------------------------
+  // --- Uygulama durumu geçişleri ----------------------------------------
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
@@ -113,9 +150,20 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
     const subscription = AppState.addEventListener(
       'change',
       (next: AppStateStatus) => {
-        const cameToForeground =
-          appState.current.match(/inactive|background/) && next === 'active';
+        const previous = appState.current;
         appState.current = next;
+
+        // Arka plana geçiş: bekleyen eşitleme burada bitmeli. Uygulama arka
+        // plandayken JS zamanlayıcıları askıya alınabiliyor, yani debounce hiç
+        // çalışmayabilir — üstelik bildirimlerin doğru olmasının asıl önemli
+        // olduğu an tam da bu.
+        if (previous === 'active' && next.match(/inactive|background/)) {
+          void flushReminderSync();
+          return;
+        }
+
+        const cameToForeground =
+          previous.match(/inactive|background/) && next === 'active';
         if (!cameToForeground) return;
 
         runTimeSkip()
@@ -124,7 +172,8 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
             if (!result.didRun) return;
             setTimeSkip(result);
             await refreshStats();
-            notifyChange(); // hatırlatmalar da bu sayede eşitlenir
+            // Statüler değişti: hatırlatmalar da yeniden türetilmeli.
+            notifyScheduleChanged();
           })
           .catch((err: unknown) => {
             // Foreground simülasyonu en iyi çaba: hata açılışı bozmasın.
@@ -134,7 +183,7 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => subscription.remove();
-  }, [status, refreshStats, notifyChange]);
+  }, [status, refreshStats, notifyScheduleChanged]);
 
   const value = useMemo<FarmContextValue>(
     () => ({
@@ -143,12 +192,22 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
       timeSkip,
       stats,
       revision,
-      notifyChange,
+      notifyScheduleChanged,
+      notifyContentChanged,
       refreshStats,
       retry: () => setAttempt((n) => n + 1),
       dismissTimeSkip: () => setTimeSkip(null),
     }),
-    [status, error, timeSkip, stats, revision, notifyChange, refreshStats],
+    [
+      status,
+      error,
+      timeSkip,
+      stats,
+      revision,
+      notifyScheduleChanged,
+      notifyContentChanged,
+      refreshStats,
+    ],
   );
 
   return <FarmContext.Provider value={value}>{children}</FarmContext.Provider>;

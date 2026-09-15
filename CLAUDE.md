@@ -70,11 +70,21 @@ This distinction drives most of the design:
 
 ### The `revision` funnel
 
-`FarmProvider` exposes `revision` + `notifyChange()`. Every mutation goes through
-`useNotes`/`useInventory`, which call `notifyChange()`; the provider then refreshes
-stats and calls `syncWeedReminders()`. **Put cross-cutting reactions here, not in
-individual mutations** — that is what makes "harvested but its reminder is still
-scheduled" unrepresentable.
+`FarmProvider` exposes `revision` plus **two** notify channels. Every mutation goes
+through `useNotes`/`useInventory` and picks one:
+
+- `notifyScheduleChanged()` — the write moves some note's weed clock. Bumps
+  `revision` *and* asks for a reminder sync. All five `useNotes` mutations use it:
+  planting creates a reminder, harvest/delete invalidate one, and tend/edit both
+  refresh `last_tended_at` (see `updateNote`), which slides the reminder forward.
+- `notifyContentChanged()` — the write cannot move any reminder. Bumps `revision`
+  only; the notification layer is never touched. Today that is just discarding a
+  pantry item.
+
+**Put cross-cutting reactions here, not in individual mutations** — that is what
+makes "harvested but its reminder is still scheduled" unrepresentable. When unsure
+which channel to use, pick `notifyScheduleChanged()`: a redundant sync is cheap
+(it is debounced), a missed one is a stale notification.
 
 ### Weed reminders
 
@@ -84,6 +94,13 @@ no `reminder_id` column or migration was needed; re-scheduling the same identifi
 replaces the previous request, so sync is idempotent. Permission is requested lazily —
 only when there is at least one reminder to schedule, i.e. after the first seed.
 Notification failures are swallowed by design; the app must work without them.
+
+`syncWeedReminders()` re-reads and re-schedules *everything*, so it is never called
+per write. Callers use `requestReminderSync()`, which debounces by 1.5s and serializes
+runs — two overlapping syncs would each start from `getAllScheduledNotificationsAsync`
+and one could cancel what the other just scheduled. `FarmProvider` calls
+`flushReminderSync()` when the app leaves the foreground, because JS timers can be
+suspended there and that is exactly the moment the OS-scheduled set must be correct.
 
 ## Invariants and traps
 

@@ -21,7 +21,7 @@ export interface UseInventoryResult {
 }
 
 export function useInventory(): UseInventoryResult {
-  const { revision, notifyChange, status } = useFarm();
+  const { revision, notifyContentChanged, status } = useFarm();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [summary, setSummary] = useState<InventorySummaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,9 +66,11 @@ export function useInventory(): UseInventoryResult {
     async (id: number) => {
       setItems((prev) => prev.filter((item) => item.id !== id));
       await removeInventoryItem(id);
-      notifyChange();
+      // Kiler yazması tarladaki hiçbir notun `last_tended_at`'ine dokunmaz,
+      // yani kurulu hiçbir hatırlatmanın anı değişmez: içerik kanalı yeterli.
+      notifyContentChanged();
     },
-    [notifyChange],
+    [notifyContentChanged],
   );
 
   const totalValue = summary.reduce((sum, entry) => sum + entry.value, 0);

@@ -30,7 +30,11 @@ export interface UseNotesResult {
 }
 
 export function useNotes(): UseNotesResult {
-  const { revision, notifyChange, status } = useFarm();
+  // Buradaki beş yazmanın hepsi zamanlama kanalını kullanıyor: ekim yeni bir
+  // hatırlatma doğuruyor, hasat ve silme kurulu olanı geçersiz kılıyor, ot
+  // temizleme ve düzenleme ise `last_tended_at`'i tazeleyerek hatırlatmanın
+  // anını ileri kaydırıyor (bkz. updateNote).
+  const { revision, notifyScheduleChanged, status } = useFarm();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,9 +68,9 @@ export function useNotes(): UseNotesResult {
     async (input: CreateNoteInput) => {
       const note = await plantSeed(input);
       setNotes((prev) => [note, ...prev]);
-      notifyChange();
+      notifyScheduleChanged();
     },
-    [notifyChange],
+    [notifyScheduleChanged],
   );
 
   const tend = useCallback(
@@ -75,9 +79,9 @@ export function useNotes(): UseNotesResult {
       if (updated) {
         setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
       }
-      notifyChange();
+      notifyScheduleChanged();
     },
-    [notifyChange],
+    [notifyScheduleChanged],
   );
 
   const harvest = useCallback(
@@ -85,9 +89,9 @@ export function useNotes(): UseNotesResult {
       // Kart zaten küçülüp kayboldu; listeden hemen düşür.
       setNotes((prev) => prev.filter((n) => n.id !== id));
       await harvestNote(id);
-      notifyChange();
+      notifyScheduleChanged();
     },
-    [notifyChange],
+    [notifyScheduleChanged],
   );
 
   const save = useCallback(
@@ -96,18 +100,18 @@ export function useNotes(): UseNotesResult {
       if (updated) {
         setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)));
       }
-      notifyChange();
+      notifyScheduleChanged();
     },
-    [notifyChange],
+    [notifyScheduleChanged],
   );
 
   const remove = useCallback(
     async (id: number) => {
       setNotes((prev) => prev.filter((n) => n.id !== id));
       await deleteNote(id);
-      notifyChange();
+      notifyScheduleChanged();
     },
-    [notifyChange],
+    [notifyScheduleChanged],
   );
 
   return { notes, loading, reload, plant, tend, harvest, save, remove };

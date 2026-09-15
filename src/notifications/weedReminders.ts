@@ -245,6 +245,68 @@ export async function syncWeedReminders(
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Eşitleme kuyruğu                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Yazma başına bir eşitleme fazla pahalı: `syncWeedReminders` kurulu TÜM
+ * bildirimleri okuyup baştan kuruyor. Bugün yazmalar seyrek olduğu için
+ * (detay panelindeki "Kaydet" butonu) görünmüyor; blok editörü otomatik
+ * kaydetmeye başladığında her tuş vuruşu bir eşitleme demek olurdu.
+ *
+ * Hatırlatma ~42 saat ötede, yani birkaç saniye bayat kalması önemsiz.
+ * Önemli olan, kullanıcı uygulamadan ayrılmadan ÖNCE doğru olması — bunun
+ * için `flushReminderSync` var.
+ */
+const SYNC_DEBOUNCE_MS = 1_500;
+
+let pendingSync: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Eşitlemeler uç uca sıraya diziliyor. İkisi aynı anda çalışırsa biri
+ * diğerinin yeni kurduğu bildirimi "artık istenmiyor" sanıp iptal edebilir:
+ * her ikisi de `getAllScheduledNotificationsAsync` ile başlayıp o anki
+ * listeye göre karar veriyor.
+ */
+let syncTail: Promise<void> = Promise.resolve();
+
+function runSyncNow(): Promise<void> {
+  syncTail = syncTail.then(async () => {
+    // syncWeedReminders kendi hatalarını yutuyor; zincir kopmaz.
+    await syncWeedReminders();
+  });
+  return syncTail;
+}
+
+/**
+ * Hatırlatmaların veritabanıyla eşitlenmesini ister. Arka arkaya gelen
+ * çağrılar tek çalışmada birleşir — yazan tarafın eşitlemenin maliyetini
+ * düşünmesi gerekmez.
+ */
+export function requestReminderSync(): void {
+  if (pendingSync) clearTimeout(pendingSync);
+  pendingSync = setTimeout(() => {
+    pendingSync = null;
+    void runSyncNow();
+  }, SYNC_DEBOUNCE_MS);
+}
+
+/**
+ * Bekleyen eşitlemeyi hemen çalıştırır ve bitmesini bekler.
+ *
+ * Uygulama arka plana geçerken şart: JS zamanlayıcıları orada askıya
+ * alınabiliyor, yani bekleyen debounce hiç çalışmayabilir — üstelik tam o an
+ * işletim sistemine kurulu bildirimlerin doğru olması gereken an.
+ */
+export function flushReminderSync(): Promise<void> {
+  if (pendingSync) {
+    clearTimeout(pendingSync);
+    pendingSync = null;
+  }
+  return runSyncNow();
+}
+
 /** Tüm ot hatırlatmalarını kaldırır (çıkış/sıfırlama senaryoları). */
 export async function cancelAllWeedReminders(): Promise<void> {
   try {
