@@ -1,17 +1,16 @@
 /**
- * Tarla — ana ekran.
+ * Tarla görünümü — toprak parsellerinden oluşan ızgara.
  *
- * Notlar alt alta bir liste değil, aralarında boşluk olan toprak
- * parsellerinden oluşan bir tarla ızgarası olarak gösterilir; sütun sayısı
- * ekran genişliğine göre 2-4 arasında değişir. Notların ardına her zaman boş parsel eklenir: ekim
- * başlıktaki bir butonla değil, boş toprağa dokunarak yapılır.
+ * Artık bir "ekran" değil, kabuğun içindeki görünümlerden biri: veriyi,
+ * panelleri ve ipucu balonunu `AppShell` yönetiyor, burası yalnızca düzen ve
+ * jestler. Kendi `useNotes()` çağrısı yok — aynı sorgunun kenar çubuğuyla
+ * birlikte iki kez koşmaması için.
  *
- * Tüm jestler NoteCard'ın içinde; bu ekran yalnızca veri, düzen ve panelleri
- * yönetir.
+ * Notların ardına her zaman boş parsel eklenir: ekim başlıktaki bir butonla
+ * değil, boş toprağa dokunarak yapılır.
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -19,20 +18,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AddSeedSheet } from '../components/AddSeedSheet';
 import { EmptyPlot } from '../components/EmptyPlot';
-import { HintToast } from '../components/HintToast';
 import { NoteCard } from '../components/NoteCard';
-import { NoteDetailSheet } from '../components/NoteDetailSheet';
 import { devAgeNotes } from '../db/repositories/notes';
 import { DAY } from '../game/config';
 import { resolveStage, STAGE_VISUALS, type VisualStage } from '../game/stages';
 import { runTimeSkip } from '../game/timeSkip';
-import { useNotes } from '../hooks/useNotes';
-import { useNow } from '../hooks/useNow';
-import { useReminderTap } from '../hooks/useReminderTap';
 import { useFarm } from '../providers/FarmProvider';
 import { borders, colors, radii, spacing, typography } from '../theme';
 import { STAGE_COLORS } from '../theme/stageColors';
@@ -48,7 +40,7 @@ const GRID_PADDING = spacing.md;
 const TARGET_TILE = 150;
 const MAX_TILE = 200;
 const MIN_COLUMNS = 2;
-const MAX_COLUMNS = 4;
+const MAX_COLUMNS = 5;
 /** Tarlanın sonunda kaç sıra boş toprak dursun — ekim buradan yapılıyor. */
 const SPARE_ROWS = 1;
 
@@ -60,19 +52,27 @@ type Cell =
   | { key: string; kind: 'note'; note: Note }
   | { key: string; kind: 'empty' };
 
-export function FarmScreen() {
+interface Props {
+  notes: Note[];
+  now: number;
+  onOpen: (id: number) => void;
+  onTend: (id: number) => void;
+  onHarvest: (id: number) => void;
+  onBlocked: () => void;
+  onAdd: () => void;
+}
+
+export function FarmView({
+  notes,
+  now,
+  onOpen,
+  onTend,
+  onHarvest,
+  onBlocked,
+  onAdd,
+}: Props) {
   const { timeSkip, dismissTimeSkip, notifyScheduleChanged } = useFarm();
-  const { notes, loading, plant, tend, harvest, save, remove } = useNotes();
-  const now = useNow();
   const { width } = useWindowDimensions();
-
-  const [adding, setAdding] = useState(false);
-  const [detailId, setDetailId] = useState<number | null>(null);
-  const [hint, setHint] = useState<string | null>(null);
-  /** Bildirimden gelen not, liste henüz yüklenmemiş olabileceği için beklemede. */
-  const [pendingNoteId, setPendingNoteId] = useState<number | null>(null);
-
-  useReminderTap(setPendingNoteId);
 
   const { columns, tileSize, fieldWidth } = useMemo(() => {
     const usable = Math.max(TARGET_TILE, width - GRID_PADDING * 2);
@@ -118,52 +118,12 @@ export function FarmScreen() {
     return list;
   }, [notes, columns]);
 
-  const detailNote: Note | null =
-    notes.find((note) => note.id === detailId) ?? null;
-
-  // Hatırlatmaya dokunuldu: not yüklendiğinde aç. Bu arada ot basmışsa
-  // detay yerine ipucu gösterilir — kartın kuralıyla tutarlı kalır.
-  useEffect(() => {
-    if (pendingNoteId === null || loading) return;
-    const target = notes.find((note) => note.id === pendingNoteId);
-    setPendingNoteId(null);
-    if (!target) return;
-    if (resolveStage(target, Date.now()) === 'weedy') {
-      setHint('Geç kaldın — bu tohumu otlar sardı. Yana kaydırıp temizle.');
-      return;
-    }
-    setDetailId(target.id);
-  }, [pendingNoteId, loading, notes]);
-
-  const handleBlocked = useCallback(() => {
-    setHint('Bu tohumu otlar sarmış. Açmadan önce yana kaydırıp temizle.');
-  }, []);
-
-  const handleTend = useCallback(
-    (id: number) => {
-      void tend(id);
-      setHint('Otlar temizlendi, ürün yeniden büyüyor. 🌿');
-    },
-    [tend],
-  );
-
-  const handleHarvest = useCallback(
-    (id: number) => {
-      void harvest(id);
-      setHint('Hasat kilere düştü. 🧺');
-    },
-    [harvest],
-  );
-
   /** Geliştirme aracı: tarlayı bir gün yaşlandırıp simülasyonu zorla çalıştırır. */
   const handleAgeField = useCallback(async () => {
     await devAgeNotes(DAY);
     await runTimeSkip({ force: true });
     notifyScheduleChanged();
-    setHint('Zaman makinesi: tarla 1 gün yaşlandı. ⏩');
   }, [notifyScheduleChanged]);
-
-  const handleAdd = useCallback(() => setAdding(true), []);
 
   const renderItem = useCallback(
     ({ item, index }: { item: Cell; index: number }) =>
@@ -172,19 +132,19 @@ export function FarmScreen() {
           note={item.note}
           now={now}
           size={tileSize}
-          onOpen={setDetailId}
-          onTend={handleTend}
-          onHarvest={handleHarvest}
-          onBlocked={handleBlocked}
+          onOpen={onOpen}
+          onTend={onTend}
+          onHarvest={onHarvest}
+          onBlocked={onBlocked}
         />
       ) : (
-        <EmptyPlot size={tileSize} index={index} onPress={handleAdd} />
+        <EmptyPlot size={tileSize} index={index} onPress={onAdd} />
       ),
-    [now, tileSize, handleTend, handleHarvest, handleBlocked, handleAdd],
+    [now, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <View style={styles.root}>
       <View style={styles.header}>
         <View style={[styles.headerInner, { maxWidth: fieldWidth }]}>
           <View style={styles.headerTitleBlock}>
@@ -237,40 +197,18 @@ export function FarmScreen() {
         </View>
       </View>
 
-      {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.leafDeep} />
-        </View>
-      ) : (
-        <FlatList
-          key={columns}
-          data={cells}
-          keyExtractor={(item) => item.key}
-          renderItem={renderItem}
-          numColumns={columns}
-          style={[styles.list, { maxWidth: fieldWidth }]}
-          contentContainerStyle={styles.grid}
-          columnWrapperStyle={styles.column}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-
-      <AddSeedSheet
-        visible={adding}
-        onClose={() => setAdding(false)}
-        onPlant={plant}
+      <FlatList
+        key={columns}
+        data={cells}
+        keyExtractor={(item) => item.key}
+        renderItem={renderItem}
+        numColumns={columns}
+        style={[styles.list, { maxWidth: fieldWidth }]}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.column}
+        showsVerticalScrollIndicator={false}
       />
-
-      <NoteDetailSheet
-        note={detailNote}
-        onClose={() => setDetailId(null)}
-        onSave={save}
-        onHarvest={harvest}
-        onDelete={remove}
-      />
-
-      <HintToast message={hint} onHide={() => setHint(null)} />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -339,7 +277,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: colors.textMuted,
   },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { flex: 1, width: '100%', alignSelf: 'center' },
   /** Parseller ayrı kartlar: aralarındaki boşluk ızgarayı nefes aldırır. */
   grid: { paddingBottom: spacing.xxl, gap: spacing.sm },

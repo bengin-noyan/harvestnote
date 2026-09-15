@@ -1,13 +1,14 @@
 /**
- * Kiler — hasat edilmiş görevlerin sergilendiği ekran.
+ * Kiler görünümü — hasat edilmiş görevlerin sergilendiği raf.
  *
  * Buradaki kayıtlar `inventory` tablosundan gelir; notun kendisi silinse bile
  * hasat geçmişi durur (ON DELETE SET NULL), yani "yaptıklarım" listesi
  * hiçbir zaman geriye doğru bozulmaz.
+ *
+ * Kendi güvenli alanını yönetmiyor: kabuğun içindeki görünümlerden biri.
  */
 import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmptyState } from '../components/EmptyState';
 import { InventoryCard } from '../components/InventoryCard';
@@ -15,12 +16,13 @@ import { SEED_CATALOG } from '../game/config';
 import { useInventory } from '../hooks/useInventory';
 import { borders, colors, radii, spacing, typography } from '../theme';
 import type { InventoryItem } from '../types';
+import { PAGE_MAX_WIDTH } from './NotePage';
 
-export function InventoryScreen() {
+export function InventoryView() {
   const { items, summary, totalValue, loading, discard } = useInventory();
 
   return (
-    <SafeAreaView style={styles.root} edges={['top']}>
+    <View style={styles.root}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerTitleBlock}>
@@ -73,7 +75,7 @@ export function InventoryScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -115,6 +117,12 @@ const styles = StyleSheet.create({
   shelfEmoji: { fontSize: 16 },
   shelfCount: { ...typography.caption, color: colors.textSecondary },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  list: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    width: '100%',
+    maxWidth: PAGE_MAX_WIDTH,
+    alignSelf: 'center',
+  },
   separator: { height: spacing.md },
 });

@@ -5,6 +5,8 @@ node_modules/
 .expo/
 .expo-shared/
 dist/
+# expo export --output-dir ile uretilen her varyant
+dist-*/
 web-build/
 expo-env.d.ts
 

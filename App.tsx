@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PixelButton } from './src/components/PixelButton';
-import { RootNavigator } from './src/navigation/RootNavigator';
+import { AppShell } from './src/navigation/AppShell';
 import { FarmProvider, useFarm } from './src/providers/FarmProvider';
 import { colors, spacing, typography } from './src/theme';
 
@@ -32,8 +32,8 @@ export default function App() {
 }
 
 /**
- * Açılış kapısı: migration'lar ve time-skip bitene kadar navigasyonu monte
- * etmez. Ekranlar böylece "veri hazır" varsayımıyla yazılabiliyor.
+ * Açılış kapısı: migration'lar ve time-skip bitene kadar kabuğu monte etmez.
+ * Görünümler böylece "veri hazır" varsayımıyla yazılabiliyor.
  */
 function FarmGate() {
   const { status, error, retry } = useFarm();
@@ -59,7 +59,7 @@ function FarmGate() {
     );
   }
 
-  return <RootNavigator />;
+  return <AppShell />;
 }
 
 const styles = StyleSheet.create({

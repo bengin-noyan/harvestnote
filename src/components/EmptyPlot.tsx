@@ -1,7 +1,7 @@
 /**
  * Boş parsel — sürülmüş ama henüz ekilmemiş toprak.
  *
- * Tarlanın sonunda her zaman boş parsel bırakılır (bkz. FarmScreen'deki
+ * Tarlanın sonunda her zaman boş parsel bırakılır (bkz. FarmView'deki
  * hücre listesi). Ekmek başlıktaki bir butonun işi değil, toprağın kendisine
  * dokunmakla olur: böylece "ekle" eylemi de uygulama çerçevesinden çıkıp
  * tarlanın içine giriyor.
