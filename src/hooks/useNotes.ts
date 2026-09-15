@@ -7,6 +7,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 
+import { getTodoCounts, type TodoCount } from '../db/repositories/blocks';
 import {
   deleteNote,
   harvestNote,
@@ -20,6 +21,12 @@ import type { CreateNoteInput, Note, UpdateNoteInput } from '../types';
 
 export interface UseNotesResult {
   notes: Note[];
+  /**
+   * Not id'sine göre yapılacak sayımı. Olgunluk hesabının emek payı buradan
+   * geliyor; sayımı olmayan not (yapılacak bloğu yok) eskisi gibi yalnızca
+   * zamanla olgunlaşır.
+   */
+  labor: Map<number, TodoCount>;
   loading: boolean;
   reload: () => Promise<void>;
   plant: (input: CreateNoteInput) => Promise<void>;
@@ -36,22 +43,31 @@ export function useNotes(): UseNotesResult {
   // anını ileri kaydırıyor (bkz. updateNote).
   const { revision, notifyScheduleChanged, status } = useFarm();
   const [notes, setNotes] = useState<Note[]>([]);
+  const [labor, setLabor] = useState<Map<number, TodoCount>>(new Map());
   const [loading, setLoading] = useState(true);
 
+  /** Liste ve sayım birlikte okunur: ikisi aynı anın görüntüsü olmalı. */
+  const load = useCallback(
+    () => Promise.all([listFieldNotes(), getTodoCounts()]),
+    [],
+  );
+
   const reload = useCallback(async () => {
-    const rows = await listFieldNotes();
+    const [rows, counts] = await load();
     setNotes(rows);
+    setLabor(counts);
     setLoading(false);
-  }, []);
+  }, [load]);
 
   useEffect(() => {
     if (status !== 'ready') return;
     let cancelled = false;
 
-    listFieldNotes()
-      .then((rows) => {
+    load()
+      .then(([rows, counts]) => {
         if (cancelled) return;
         setNotes(rows);
+        setLabor(counts);
         setLoading(false);
       })
       .catch((err: unknown) => {
@@ -62,7 +78,7 @@ export function useNotes(): UseNotesResult {
     return () => {
       cancelled = true;
     };
-  }, [status, revision]);
+  }, [status, revision, load]);
 
   const plant = useCallback(
     async (input: CreateNoteInput) => {
@@ -114,5 +130,5 @@ export function useNotes(): UseNotesResult {
     [notifyScheduleChanged],
   );
 
-  return { notes, loading, reload, plant, tend, harvest, save, remove };
+  return { notes, labor, loading, reload, plant, tend, harvest, save, remove };
 }

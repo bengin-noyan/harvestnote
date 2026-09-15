@@ -10,14 +10,20 @@ a pantry. UI strings, comments and commit-facing text are Turkish; identifiers a
 
 ```bash
 npm run typecheck                      # tsc --noEmit (strict + noUncheckedIndexedAccess)
-npx expo start                         # Metro dev server
-npx expo run:android                   # development build — REQUIRED to test notifications
+npx expo start --web                   # the working iteration loop; runs at localhost:8081
 npx expo export --platform android     # full Metro bundle; catches Babel/import errors tsc cannot
+npx expo export --platform web --output-dir dist-web
 ```
+
+One codebase serves both targets, and **web is the surface that currently runs** — the
+app does not open on an Android device yet (unverified native-init diagnosis; see git
+log for `expo-dev-client`). Iterate on web, then treat the device as a separate gate.
+Notifications still need a real development build; Expo Go is not enough.
 
 `expo export` is the cheapest real end-to-end check — it has caught a duplicate Babel
 plugin and a stale `src/app/` directory that Metro mistook for an Expo Router root.
-Run it after touching `babel.config.js`, `app.json`, or module layout.
+Run it after touching `babel.config.js`, `app.json`, or module layout. Export both
+platforms: web pulls in `wa-sqlite` and a different transaction path.
 
 There is **no test framework installed**. The pure modules (`src/game/growth.ts`,
 `src/game/stages.ts`, `planReminders` in `src/notifications/weedReminders.ts`) are
@@ -38,6 +44,20 @@ types → db (schema · repositories · mappers) → game (pure rules) → notif
 
 The note body lives in `note_blocks` (migration 2), reached through
 `db/repositories/blocks.ts` and rendered by `components/editor/`.
+
+### The shell
+
+There is **no navigation library**. `navigation/AppShell.tsx` is a hand-rolled
+workspace: a sidebar (permanent at ≥900px, a sliding drawer below) plus a content area
+showing either a view (`FarmView` / `ListView` / `InventoryView`) or a `NotePage`.
+React Navigation was removed because its screen/tab containers fought the sidebar
+layout for a stack that is at most two levels deep; the cost is that the Android back
+button is wired manually via `BackHandler` in `AppShell`. Adding a router back would
+undo that trade, not improve it.
+
+`AppShell` makes the single `useNotes()` call and passes notes down as props. The
+sidebar, list and farm each calling it would run the same query three times per
+`revision`.
 
 `src/db/index.ts` is the data layer's public entry; UI should not reach into
 `database.ts` or `schema.ts` directly.
@@ -61,6 +81,14 @@ This distinction drives most of the design:
   regression, not a fix.
 - Reminders are derived too: the scheduled-notification set is a function of the DB,
   recomputed on every change rather than tracked in a column.
+- **Maturity is a function of time *and* labor**, and stays derived. With no todo
+  blocks a note behaves exactly as before (time only). With them,
+  `maturity = 0.5 × time + 0.5 × checked/total`, and all-checked means `harvestable`
+  regardless of age. The deliberate cost: a note whose todos are half done does *not*
+  ripen on time alone — finishing the work is what ripens the crop. Early harvest is
+  always available. No column, no time-skip write. The calculation lives in
+  `game/stages.ts` and takes only `{ done, total }` so the module stays runnable under
+  plain `node`; the counts come from one grouped query (`getTodoCounts`).
 - **`notes.content` is a derived projection of the blocks**, not dead weight. Every
   block write recomputes it (plain text, dividers and blank lines dropped) inside the
   same transaction. It exists so `buildNoteQuery`'s LIKE search and the card preview
@@ -199,6 +227,12 @@ the projection refuses to write after that (`WHERE harvested_at IS NULL`).
 
 - No extra UI libraries. Bottom sheets, buttons and icons are RN primitives,
   `StyleSheet` and emoji; palette and scales live in `src/theme/index.ts`.
+- **`LivingPlant` is the product's differentiator, not decoration.** The crop is drawn
+  from Views (`borderRadius` leaves, a stem that interpolates its height off maturity)
+  and sways continuously, so progress reads as a growing organism rather than one of
+  four emoji. It is purely decorative to the accessibility tree — status is conveyed in
+  text next to it — and it honours `useReducedMotion`. It deliberately avoids
+  `react-native-svg`: these shapes do not need it.
 - Gesture handlers inside an RN `Modal` need their own `GestureHandlerRootView`
   (see `BottomSheet.tsx`) or they silently do nothing on Android.
 - One clock per screen: `useNow()` ticks and is passed down as a prop, rather than

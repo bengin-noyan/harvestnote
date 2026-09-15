@@ -79,6 +79,45 @@ export async function listBlocksForEditing(
   return listBlocks(noteId);
 }
 
+/** Not başına işaretli/toplam yapılacak sayısı. */
+export interface TodoCount {
+  done: number;
+  total: number;
+}
+
+/**
+ * Bütün notların yapılacak sayımı, tek sorguda.
+ *
+ * Emek↔olgunluk köprüsünün girdisi bu (bkz. `maturityProgress`). Not başına
+ * ayrı sorgu atmak tarla ızgarasında not sayısı kadar sorgu demekti; burası
+ * tek `GROUP BY` ile dönüyor ve `idx_blocks_note` üzerinden gidiyor.
+ *
+ * Oyun katmanına satır değil yalnızca sayım gidiyor: `game/stages.ts`'in
+ * DB'den bağımsız kalması şart.
+ */
+export async function getTodoCounts(): Promise<Map<number, TodoCount>> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{
+    note_id: number;
+    total: number;
+    done: number | null;
+  }>(
+    `SELECT note_id,
+            COUNT(*)      AS total,
+            SUM(checked)  AS done
+       FROM note_blocks
+      WHERE type = 'todo'
+      GROUP BY note_id`,
+  );
+
+  const counts = new Map<number, TodoCount>();
+  for (const row of rows) {
+    // SUM boş kümede NULL döner; CHECK 0/1'e zorluyor ama yine de koruyoruz.
+    counts.set(row.note_id, { done: row.done ?? 0, total: row.total });
+  }
+  return counts;
+}
+
 /* ------------------------------------------------------------------ */
 /* Yazma                                                               */
 /* ------------------------------------------------------------------ */

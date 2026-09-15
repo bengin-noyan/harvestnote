@@ -5,7 +5,7 @@
  * olan bir karttır — tarlaya karışmaz, üstünde durur. Zemin çizgisi parseli
  * ikiye böler — üstünde bitki, altında yazı. Bitki höyüğe kök salar ve
  * olgunlaştıkça büyür: olgunluk ayrı bir ilerleme çubuğuyla değil,
- * doğrudan bitkinin boyuyla anlatılır.
+ * doğrudan bitkinin boyuyla anlatılır (bkz. LivingPlant).
  *
  * Jest haritası (aşamaya göre değişir):
  *   weedy        yana kaydır  -> otlar süzülüp gider, `tendNote` çalışır
@@ -31,11 +31,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import type { TodoCount } from '../db/repositories/blocks';
 import { SEED_CATALOG } from '../game/config';
 import {
   maturityProgress,
   resolveStage,
-  stageEmoji,
   STAGE_VISUALS,
 } from '../game/stages';
 import {
@@ -48,6 +48,7 @@ import {
 } from '../theme';
 import { durations, easings, springs } from '../theme/motion';
 import type { Note } from '../types';
+import { LivingPlant } from './LivingPlant';
 import { PlotGround, plotMetrics } from './PlotGround';
 
 /** Otların temizlenmiş sayılması için gereken yatay mesafe. */
@@ -56,17 +57,17 @@ const CLEAR_DISTANCE = 88;
 const HARVEST_DISTANCE = 64;
 
 /**
- * Bitkinin parsel kenarına oranı. Yeni ekilen filiz `MIN`, hasada hazır
- * ürün `MAX` boyundadır; arası olgunlukla doğrusal. İlerleme çubuğunun
- * yerini bu tutuyor.
+ * Bitkinin çizim kutusunun zemin üstü yüksekliğe oranı. Kutu sabit; büyüyen
+ * şey kutunun *içindeki* bitki (LivingPlant sapı olgunlukla uzatıyor).
  */
-const PLANT_MIN_RATIO = 0.17;
-const PLANT_MAX_RATIO = 0.36;
+const PLANT_BOX_RATIO = 0.74;
 
 interface Props {
   note: Note;
   /** Ekranın paylaşılan saati — bkz. hooks/useNow. */
   now: number;
+  /** Notun yapılacak sayımı; yoksa olgunluk yalnızca zamandan gelir. */
+  labor?: TodoCount;
   size: number;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
@@ -78,24 +79,23 @@ interface Props {
 function NoteCardComponent({
   note,
   now,
+  labor,
   size,
   onOpen,
   onTend,
   onHarvest,
   onBlocked,
 }: Props) {
-  const stage = resolveStage(note, now);
+  const stage = resolveStage(note, now, undefined, labor);
   const visual = STAGE_VISUALS[stage];
   const isWeedy = stage === 'weedy';
   const isHarvestable = stage === 'harvestable';
-  const progress = maturityProgress(note, now);
+  const progress = maturityProgress(note, now, undefined, labor);
   const seed = SEED_CATALOG[note.seed_type];
 
   const { ground, moundHeight } = plotMetrics(size);
-  const plantSize = Math.round(
-    size * (PLANT_MIN_RATIO + (PLANT_MAX_RATIO - PLANT_MIN_RATIO) * progress),
-  );
-  const glowSize = Math.round(plantSize * 1.9);
+  const plantBox = Math.round(ground * PLANT_BOX_RATIO);
+  const glowSize = Math.round(size * 0.62);
 
   const weedX = useSharedValue(0);
   const weedOpacity = useSharedValue(isWeedy ? 1 : 0);
@@ -304,18 +304,19 @@ function NoteCardComponent({
             style={[
               styles.plantShadow,
               {
-                width: Math.round(plantSize * 0.8),
-                height: Math.round(plantSize * 0.16),
-                borderRadius: plantSize,
+                width: Math.round(size * 0.22),
+                height: Math.round(size * 0.045),
+                borderRadius: size,
                 bottom: Math.round(moundHeight * 0.35),
               },
             ]}
           />
-          <Text
-            style={[styles.plant, { fontSize: plantSize }]}
-          >
-            {stageEmoji(stage, note.seed_type)}
-          </Text>
+          <LivingPlant
+            stage={stage}
+            progress={progress}
+            height={plantBox}
+            seed={note.seed_type}
+          />
         </View>
 
         {/* Zemin çizgisinin altı: yazı. */}
@@ -338,7 +339,11 @@ function NoteCardComponent({
             numberOfLines={1}
             maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
           >
-            {isHarvestable ? '↑ hasat' : `${seed?.emoji ?? ''} ${visual.label}`}
+            {isHarvestable
+              ? '↑ hasat'
+              : labor && labor.total > 0
+                ? `☑ ${labor.done}/${labor.total}`
+                : `${seed?.emoji ?? ''} ${visual.label}`}
           </Text>
         </View>
 
@@ -413,16 +418,6 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: colors.bark,
     opacity: 0.35,
-  },
-  /**
-   * Android emojiyi satır kutusunun font padding'iyle üstten/alttan kırpıyor;
-   * padding kapatılıp dikey hizalama ortaya alınınca tam görünüyor. lineHeight
-   * verilmiyor — emojinin kendi ölçüsü fontSize'dan zaten büyük.
-   */
-  plant: {
-    textAlign: 'center',
-    includeFontPadding: false,
-    textAlignVertical: 'center',
   },
   /**
    * Yazı bloğu zemin çizgisinin altındaki yarının ortasına oturur. Üstten

@@ -60,7 +60,7 @@ const VIEW_TITLES: Record<WorkspaceView, string> = {
 };
 
 export function AppShell() {
-  const { notes, loading, plant, tend, harvest, save, remove } = useNotes();
+  const { notes, labor, loading, plant, tend, harvest, save, remove } = useNotes();
   const now = useNow();
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_BREAKPOINT;
@@ -80,14 +80,16 @@ export function AppShell() {
     (id: number) => {
       const target = notes.find((note) => note.id === id);
       // Ot basmış not açılmaz — kartın ürün kuralı burada da geçerli.
-      if (target && resolveStage(target, Date.now()) === 'weedy') {
+      const stage =
+        target && resolveStage(target, Date.now(), undefined, labor.get(id));
+      if (stage === 'weedy') {
         setHint('Bu tohumu otlar sarmış. Açmadan önce otları temizle.');
         return;
       }
       setOpenNoteId(id);
       setDrawerOpen(false);
     },
-    [notes],
+    [notes, labor],
   );
 
   const closeNote = useCallback(() => setOpenNoteId(null), []);
@@ -164,6 +166,7 @@ export function AppShell() {
   const sidebar = (
     <Sidebar
       notes={filtered}
+      labor={labor}
       now={now}
       view={view}
       openNoteId={openNoteId}
@@ -184,6 +187,7 @@ export function AppShell() {
       return (
         <NotePage
           note={openNoteRecord}
+          labor={labor.get(openNoteRecord.id)}
           onBack={closeNote}
           onSave={save}
           onHarvest={harvest}
@@ -207,6 +211,7 @@ export function AppShell() {
       return (
         <ListView
           notes={filtered}
+          labor={labor}
           now={now}
           searching={search.trim().length > 0}
           onOpen={openNote}
@@ -219,6 +224,7 @@ export function AppShell() {
     return (
       <FarmView
         notes={filtered}
+        labor={labor}
         now={now}
         onOpen={openNote}
         onTend={handleTend}

@@ -15,12 +15,14 @@ import { SEED_CATALOG } from '../game/config';
 import { maturityProgress, resolveStage, STAGE_VISUALS } from '../game/stages';
 import { borders, colors, radii, spacing, typography } from '../theme';
 import { STAGE_COLORS } from '../theme/stageColors';
+import type { TodoCount } from '../db/repositories/blocks';
 import type { Note } from '../types';
 import { formatRelative } from '../utils/format';
 import { PAGE_MAX_WIDTH } from './NotePage';
 
 interface Props {
   notes: Note[];
+  labor: Map<number, TodoCount>;
   now: number;
   searching: boolean;
   onOpen: (id: number) => void;
@@ -30,6 +32,7 @@ interface Props {
 
 export function ListView({
   notes,
+  labor,
   now,
   searching,
   onOpen,
@@ -69,7 +72,13 @@ export function ListView({
         )
       }
       renderItem={({ item }) => (
-        <Row note={item} now={now} onOpen={onOpen} onTend={onTend} />
+        <Row
+          note={item}
+          labor={labor.get(item.id)}
+          now={now}
+          onOpen={onOpen}
+          onTend={onTend}
+        />
       )}
     />
   );
@@ -77,16 +86,18 @@ export function ListView({
 
 function Row({
   note,
+  labor,
   now,
   onOpen,
   onTend,
 }: {
   note: Note;
+  labor?: TodoCount;
   now: number;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
 }) {
-  const stage = resolveStage(note, now);
+  const stage = resolveStage(note, now, undefined, labor);
   const visual = STAGE_VISUALS[stage];
   const seed = SEED_CATALOG[note.seed_type];
   /**
@@ -96,7 +107,7 @@ function Row({
    * gösteriyor. İhmalin bedeli duruyor, çıkışı görünür oluyor.
    */
   const blocked = stage === 'weedy';
-  const progress = maturityProgress(note, now);
+  const progress = maturityProgress(note, now, undefined, labor);
 
   return (
     <Pressable

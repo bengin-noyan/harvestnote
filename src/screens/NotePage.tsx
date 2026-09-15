@@ -12,10 +12,18 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import type { TodoCount } from '../db/repositories/blocks';
 import { BlockEditor } from '../components/editor/BlockEditor';
+import { LivingPlant } from '../components/LivingPlant';
 import { PixelButton } from '../components/PixelButton';
 import { SEED_CATALOG } from '../game/config';
-import { msUntilWeedy, resolveStage, STAGE_VISUALS } from '../game/stages';
+import {
+  laborRatio,
+  maturityProgress,
+  msUntilWeedy,
+  resolveStage,
+  STAGE_VISUALS,
+} from '../game/stages';
 import { useBlocks } from '../hooks/useBlocks';
 import { reminderTimeFor } from '../notifications/weedReminders';
 import { borders, colors, radii, spacing, typography } from '../theme';
@@ -29,8 +37,13 @@ const TITLE_AUTOSAVE_MS = 600;
 /** Okunabilir satır uzunluğu sınırı. */
 export const PAGE_MAX_WIDTH = 720;
 
+/** Sayfadaki bitkinin çizim yüksekliği. */
+const PLANT_HEIGHT = 92;
+
 interface Props {
   note: Note;
+  /** Notun yapılacak sayımı; olgunluğun emek payı buradan geliyor. */
+  labor?: TodoCount;
   onBack: () => void;
   onSave: (id: number, input: UpdateNoteInput) => Promise<void>;
   onHarvest: (id: number) => Promise<void>;
@@ -40,6 +53,7 @@ interface Props {
 
 export function NotePage({
   note,
+  labor,
   onBack,
   onSave,
   onHarvest,
@@ -117,9 +131,11 @@ export function NotePage({
     }
   };
 
-  const stage = resolveStage(note);
+  const stage = resolveStage(note, Date.now(), undefined, labor);
   const visual = STAGE_VISUALS[stage];
   const seed = SEED_CATALOG[note.seed_type];
+  const progress = maturityProgress(note, Date.now(), undefined, labor);
+  const work = laborRatio(labor);
   const untilWeedy = msUntilWeedy(note);
   const untilReminder = reminderTimeFor(note) - Date.now();
 
@@ -152,21 +168,49 @@ export function NotePage({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.column}>
-          <TextInput
-            value={title}
-            onChangeText={handleTitleChange}
-            style={styles.title}
-            placeholder="Adsız"
-            placeholderTextColor={colors.textMuted}
-            maxLength={80}
-            accessibilityLabel="Not başlığı"
-          />
+          {/*
+            Notun ekini sayfanın tepesinde: burada ne kadar büyüdüğünü
+            görmek, aşağıdaki kutuları işaretlemenin neden bir şeye
+            yaradığını anlatan tek şey.
+          */}
+          <View style={styles.hero}>
+            <View style={styles.heroPlant}>
+              <LivingPlant
+                stage={stage}
+                progress={progress}
+                height={PLANT_HEIGHT}
+                seed={note.seed_type}
+              />
+              <View style={styles.heroSoil} />
+            </View>
 
-          <Text style={styles.meta}>
-            {seed?.emoji} {seed?.label} · {formatRelative(note.created_at)} ekildi
-          </Text>
+            <View style={styles.heroText}>
+              <TextInput
+                value={title}
+                onChangeText={handleTitleChange}
+                style={styles.title}
+                placeholder="Adsız"
+                placeholderTextColor={colors.textMuted}
+                maxLength={80}
+                multiline
+                accessibilityLabel="Not başlığı"
+              />
+              <Text style={styles.meta}>
+                {seed?.emoji} {seed?.label} ·{' '}
+                {formatRelative(note.created_at)} ekildi
+              </Text>
+            </View>
+          </View>
 
           <View style={styles.statusRow}>
+            {work !== null ? (
+              <View style={styles.chip}>
+                <Text style={styles.chipText}>
+                  ☑ {labor?.done}/{labor?.total} · olgunluk %
+                  {Math.round(progress * 100)}
+                </Text>
+              </View>
+            ) : null}
             <View style={styles.chip}>
               <Text style={styles.chipText}>
                 {untilWeedy > 0
@@ -253,11 +297,26 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   column: { width: '100%', maxWidth: PAGE_MAX_WIDTH, alignSelf: 'center' },
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  heroPlant: { alignItems: 'center' },
+  /** Bitkinin bastığı toprak şeridi — kağıt üstünde küçük bir parsel. */
+  heroSoil: {
+    width: PLANT_HEIGHT * 0.7,
+    height: 5,
+    borderRadius: radii.pill,
+    backgroundColor: colors.soilLight,
+    opacity: 0.55,
+  },
+  heroText: { flex: 1, paddingBottom: spacing.sm },
   title: {
     ...typography.display,
     color: colors.textPrimary,
     paddingHorizontal: 0,
-    paddingTop: spacing.lg,
     paddingBottom: spacing.xs,
   },
   meta: { ...typography.caption, color: colors.textMuted },

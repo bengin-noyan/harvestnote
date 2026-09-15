@@ -23,6 +23,7 @@ import { SEED_CATALOG } from '../game/config';
 import { resolveStage } from '../game/stages';
 import { borders, colors, radii, spacing, typography } from '../theme';
 import { STAGE_COLORS } from '../theme/stageColors';
+import type { TodoCount } from '../db/repositories/blocks';
 import type { Note } from '../types';
 
 /** Ana içerik alanında ne gösterildiği. */
@@ -42,6 +43,7 @@ const VIEWS: ViewEntry[] = [
 
 interface Props {
   notes: Note[];
+  labor: Map<number, TodoCount>;
   now: number;
   view: WorkspaceView;
   openNoteId: number | null;
@@ -56,6 +58,7 @@ interface Props {
 
 export function Sidebar({
   notes,
+  labor,
   now,
   view,
   openNoteId,
@@ -139,7 +142,7 @@ export function Sidebar({
           </Text>
         ) : (
           notes.map((note) => {
-            const stage = resolveStage(note, now);
+            const stage = resolveStage(note, now, undefined, labor.get(note.id));
             const active = openNoteId === note.id;
             return (
               <Pressable

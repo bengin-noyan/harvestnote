@@ -28,6 +28,7 @@ import { runTimeSkip } from '../game/timeSkip';
 import { useFarm } from '../providers/FarmProvider';
 import { borders, colors, radii, spacing, typography } from '../theme';
 import { STAGE_COLORS } from '../theme/stageColors';
+import type { TodoCount } from '../db/repositories/blocks';
 import type { Note } from '../types';
 
 const GRID_PADDING = spacing.md;
@@ -54,6 +55,7 @@ type Cell =
 
 interface Props {
   notes: Note[];
+  labor: Map<number, TodoCount>;
   now: number;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
@@ -64,6 +66,7 @@ interface Props {
 
 export function FarmView({
   notes,
+  labor,
   now,
   onOpen,
   onTend,
@@ -95,9 +98,11 @@ export function FarmView({
       harvestable: 0,
       weedy: 0,
     };
-    for (const note of notes) base[resolveStage(note, now)] += 1;
+    for (const note of notes) {
+      base[resolveStage(note, now, undefined, labor.get(note.id))] += 1;
+    }
     return base;
-  }, [notes, now]);
+  }, [notes, now, labor]);
 
   /**
    * Notlar + boş parseller. Son sıra tamamlanır ve üstüne bir sıra daha
@@ -130,6 +135,7 @@ export function FarmView({
       item.kind === 'note' ? (
         <NoteCard
           note={item.note}
+          labor={labor.get(item.note.id)}
           now={now}
           size={tileSize}
           onOpen={onOpen}
@@ -140,7 +146,7 @@ export function FarmView({
       ) : (
         <EmptyPlot size={tileSize} index={index} onPress={onAdd} />
       ),
-    [now, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
+    [now, labor, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
   );
 
   return (
