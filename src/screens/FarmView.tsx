@@ -9,15 +9,8 @@
  * Notların ardına her zaman boş parsel eklenir: ekim başlıktaki bir butonla
  * değil, boş toprağa dokunarak yapılır.
  */
-import React, { useCallback, useMemo } from 'react';
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyPlot } from '../components/EmptyPlot';
 import { NoteCard } from '../components/NoteCard';
@@ -75,7 +68,13 @@ export function FarmView({
   onAdd,
 }: Props) {
   const { timeSkip, dismissTimeSkip, notifyScheduleChanged } = useFarm();
-  const { width } = useWindowDimensions();
+  /**
+   * Izgara kendi kabının genişliğini ölçer, pencereninkini değil: kenar
+   * çubuğu açıkken tarla pencereden ~270px dar bir alanda yaşıyor ve
+   * `useWindowDimensions` ile hesaplanan sütun sayısı son parseli ekranın
+   * dışına taşırıyordu.
+   */
+  const [width, setWidth] = useState(0);
 
   const { columns, tileSize, fieldWidth } = useMemo(() => {
     const usable = Math.max(TARGET_TILE, width - GRID_PADDING * 2);
@@ -149,8 +148,21 @@ export function FarmView({
     [now, labor, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
   );
 
+  // Ölçüm gelmeden ızgarayı çizmek bir kare yanlış sütun sayısı demek.
+  if (width === 0) {
+    return (
+      <View
+        style={styles.root}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      />
+    );
+  }
+
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+    >
       <View style={styles.header}>
         <View style={[styles.headerInner, { maxWidth: fieldWidth }]}>
           <View style={styles.headerTitleBlock}>

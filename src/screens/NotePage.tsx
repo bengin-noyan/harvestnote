@@ -231,33 +231,44 @@ export function NotePage({
             <BlockEditor editor={editor} />
           </View>
 
+          {/*
+            Belge yüzeyinde iki dolu renk slabı yan yana durunca sayfanın
+            ağırlık merkezi metinden düğmelere kayıyordu. Hasat tek birincil
+            eylem olarak kaldı ve kendi genişliğine çekildi; sökme sessiz bir
+            metin bağlantısına indi — geri alınamaz ama her gün yapılan bir
+            iş değil, o yüzden görünür olması yeter, bağırması gerekmiyor.
+          */}
           <View style={styles.footer}>
             <PixelButton
               label={stage === 'harvestable' ? 'Hasat Et' : 'Erken Hasat'}
               icon="🧺"
-              style={styles.flexButton}
               disabled={busy}
               onPress={() =>
                 void run(() => onHarvest(note.id), 'Hasat kilere düştü. 🧺')
               }
             />
-            <PixelButton
-              label="Tohumu Sök"
-              icon="🗑"
-              tone="danger"
-              disabled={busy}
-              onPress={() =>
-                void run(() => onDelete(note.id), 'Tohum söküldü.')
-              }
-            />
+            <Text style={styles.footnote}>
+              {stage === 'harvestable'
+                ? 'Ürün olgun: kilere altın kalitede düşecek.'
+                : 'Olgunlaşmadan hasat edersen kilere normal kalitede düşer.'}
+            </Text>
           </View>
 
-          <Text style={styles.footnote}>
-            {stage === 'harvestable'
-              ? 'Ürün olgun: kilere altın kalitede düşecek.'
-              : 'Olgunlaşmadan hasat edersen kilere normal kalitede düşer.'}
-            {'  ·  '}Sökülen tohum kilere düşmez, tamamen kaybolur.
-          </Text>
+          <Pressable
+            onPress={() => void run(() => onDelete(note.id), 'Tohum söküldü.')}
+            disabled={busy}
+            hitSlop={spacing.sm}
+            style={({ pressed }) => [
+              styles.danger,
+              pressed ? styles.pressed : null,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Tohumu sök — not tamamen silinir"
+          >
+            <Text style={styles.dangerText}>
+              🗑 Tohumu sök — kilere düşmez, tamamen kaybolur
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </View>
@@ -297,10 +308,14 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   column: { width: '100%', maxWidth: PAGE_MAX_WIDTH, alignSelf: 'center' },
+  /**
+   * Bitki başlığın YANINDA değil ÜSTÜNDE. Yan yanayken başlık bitkinin
+   * genişliği kadar içeri kaçıyordu ve aşağıdaki bloklarla aynı sol kenarı
+   * paylaşmıyordu — belge yüzeyinde en çok göze batan şey bu kayma.
+   */
   hero: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.lg,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
     paddingTop: spacing.lg,
   },
   heroPlant: { alignItems: 'center' },
@@ -312,7 +327,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.soilLight,
     opacity: 0.55,
   },
-  heroText: { flex: 1, paddingBottom: spacing.sm },
+  heroText: { width: '100%' },
   title: {
     ...typography.display,
     color: colors.textPrimary,
@@ -342,14 +357,23 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing.md,
     marginTop: spacing.xl,
   },
-  flexButton: { flex: 1, minWidth: 160 },
   footnote: {
     ...typography.caption,
     color: colors.textMuted,
-    marginTop: spacing.md,
+    flex: 1,
+    minWidth: 220,
     lineHeight: 16,
   },
+  danger: {
+    alignSelf: 'flex-start',
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    marginTop: spacing.lg,
+  },
+  dangerText: { ...typography.caption, color: colors.danger },
 });

@@ -10,14 +10,16 @@
  * bir `Pressable` de aynı nedenle güvenilmez. Tutamak ayrıca "bloğu sil"in
  * garantili yolu — Android'de boş kutuda Backspace tetiklenmeyebiliyor.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
   type NativeSyntheticEvent,
+  type TextInputContentSizeChangeEventData,
   type TextInputKeyPressEventData,
   type TextInputSelectionChangeEventData,
   type TextStyle,
@@ -60,6 +62,22 @@ export function BlockRow({
 }: Props) {
   const meta = BLOCK_META[block.type];
   const done = block.type === 'todo' && block.checked;
+
+  /**
+   * Kutu içeriğine sarılsın.
+   *
+   * Çok satırlı `TextInput` web'de `<textarea>` oluyor ve textarea kendi
+   * içeriğine göre büyümüyor — varsayılan iki satırlık yüksekliğinde
+   * kalıyordu, yani her blok arasında bir satırlık ölü boşluk vardı.
+   * `onContentSizeChange` iki platformda da ölçüyü veriyor; yüksekliği
+   * oradan alıyoruz.
+   */
+  const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const handleContentSize = (
+    event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>,
+  ) => {
+    setContentHeight(event.nativeEvent.contentSize.height);
+  };
 
   const handle = (
     <Pressable
@@ -104,7 +122,14 @@ export function BlockRow({
         onFocus={onFocus}
         placeholder={meta.placeholder}
         placeholderTextColor={colors.textMuted}
-        style={[styles.input, TEXT_STYLE[block.type], done ? styles.done : null]}
+        onContentSizeChange={handleContentSize}
+        style={[
+          styles.input,
+          TEXT_STYLE[block.type],
+          done ? styles.done : null,
+          contentHeight !== null ? { height: contentHeight } : null,
+          WEB_INPUT_RESET,
+        ]}
         multiline
         /**
          * Çok satırlı TextInput kendi kaydırmasını açtığında Android'de
@@ -170,6 +195,17 @@ function Prefix({
 
   return null;
 }
+
+/**
+ * Web'de tarayıcı odaklanan her textarea'ya kendi siyah çerçevesini çiziyor;
+ * belge yüzeyinde bu, yazdığın satırın etrafında bir kutu demek. Odak zaten
+ * imleçle ve tutamağın koyulaşmasıyla belli oluyor.
+ *
+ * `outlineStyle` RN'in tip tanımında yok ama react-native-web destekliyor.
+ */
+const WEB_INPUT_RESET = Platform.OS === 'web'
+  ? ({ outlineStyle: 'none' } as unknown as TextStyle)
+  : null;
 
 /** Tür başına metin görünümü. Ölçekler theme'den gelir. */
 const TEXT_STYLE: Record<BlockType, TextStyle> = {

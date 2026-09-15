@@ -347,8 +347,15 @@ function NoteCardComponent({
           </Text>
         </View>
 
-        {/* Ot katmanı: kaydırıldıkça kayar ve solar */}
+        {/*
+          Ot katmanı: kaydırıldıkça kayar ve solar. Her zaman monte —
+          görünürlüğü opaklıkla yönetiliyor — ama ot yokken erişilebilirlik
+          ağacından çıkarılmalı: aksi halde ekran okuyucu sağlıklı bir
+          parselde "ot bastı / temizle" diye okuyor.
+        */}
         <Animated.View
+          accessibilityElementsHidden={!isWeedy}
+          importantForAccessibility={isWeedy ? 'auto' : 'no-hide-descendants'}
           style={[
             styles.weedLayer,
             weedStyle,

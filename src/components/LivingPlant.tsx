@@ -44,12 +44,19 @@ const SWAY_PERIOD_MS = 2800;
 /**
  * Yaprakların açılma eşikleri (olgunluk oranı). Çiftler kaydırmalı: iki
  * yaprak aynı anda açılırsa bitki simetrik ve cansız duruyor.
+ *
+ * İlk çiftin eşiği negatif, yani ekildiği anda yarı açık: çenek yaprakları.
+ * Sıfırdan başlatınca yeni not çıplak bir çubuk gibi görünüyordu — filiz
+ * değil, eksik çizim gibi.
  */
+const LEAF_OPEN_SPAN = 0.18;
+
 const LEAVES = [
-  { side: -1 as const, at: 0.12, height: 0.34 },
-  { side: 1 as const, at: 0.28, height: 0.46 },
-  { side: -1 as const, at: 0.48, height: 0.62 },
-  { side: 1 as const, at: 0.64, height: 0.76 },
+  { side: -1 as const, at: -0.1, height: 0.3 },
+  { side: 1 as const, at: -0.06, height: 0.34 },
+  { side: -1 as const, at: 0.3, height: 0.52 },
+  { side: 1 as const, at: 0.46, height: 0.64 },
+  { side: -1 as const, at: 0.6, height: 0.76 },
 ];
 
 /** Ürünün belirmeye başladığı olgunluk. */
@@ -64,13 +71,14 @@ interface Props {
   seed: SeedType;
 }
 
-/** Aşamaya göre bitkinin rengi. Ot basmış bitki solar, yeşilini kaybeder. */
+/**
+ * Bitkinin rengi. Aşamalar arasında ayrım yapan tek şey ot: sağlıklı bitki
+ * ekildiğinden hasada kadar aynı yeşil, çünkü büyümeyi zaten boy ve yaprak
+ * anlatıyor — renk de değişseydi iki ayrı şey aynı anda konuşuyor olurdu.
+ */
 function palette(stage: VisualStage) {
   if (stage === 'weedy') {
     return { stem: colors.weed, leaf: colors.weed, leafLight: colors.withered };
-  }
-  if (stage === 'harvestable') {
-    return { stem: colors.grass, leaf: colors.leaf, leafLight: colors.leafLight };
   }
   return { stem: colors.grass, leaf: colors.leaf, leafLight: colors.leafLight };
 }
@@ -217,7 +225,7 @@ function Leaf({
     // Eşikten sonraki dar bir aralıkta açılır; sonrası sabit.
     const open = interpolate(
       grow.value,
-      [at, at + 0.18],
+      [at, at + LEAF_OPEN_SPAN],
       [0, 1],
       Extrapolation.CLAMP,
     );
