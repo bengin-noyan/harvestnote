@@ -70,8 +70,38 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
-  // Sonraki sürümler buraya eklenecek:
-  // { version: 2, label: 'add-reminders', statements: `ALTER TABLE notes ADD COLUMN remind_at INTEGER;` },
+  {
+    version: 2,
+    label: 'note-blocks',
+    statements: `
+      CREATE TABLE IF NOT EXISTS note_blocks (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        note_id    INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+        -- Seyrek numaralama (1000, 2000, ...): araya ekleme tek satır yazma.
+        position   INTEGER NOT NULL,
+        type       TEXT    NOT NULL DEFAULT 'paragraph'
+                     CHECK (type IN ('paragraph','heading','todo','bullet',
+                                     'numbered','quote','divider','code')),
+        text       TEXT,
+        checked    INTEGER NOT NULL DEFAULT 0 CHECK (checked IN (0, 1)),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      -- Editörün tek sorgusu: bir notun blokları, sırasıyla.
+      CREATE INDEX IF NOT EXISTS idx_blocks_note
+        ON note_blocks (note_id, position);
+
+      -- Geri doldurma: mevcut her content tek bir paragraf bloğuna dönüşür.
+      -- TRIM şartı olmazsa boş/boşluklu her not için ölü bir blok satırı doğar.
+      INSERT INTO note_blocks
+        (note_id, position, type, text, checked, created_at, updated_at)
+      SELECT id, 1000, 'paragraph', content, 0, created_at, last_tended_at
+        FROM notes
+       WHERE content IS NOT NULL AND TRIM(content) <> '';
+    `,
+  },
+  // Sonraki sürümler buraya eklenecek; yayınlanmış kayıtlar ASLA düzenlenmez.
 ];
 
 /** Migration listesindeki en yüksek sürüm = hedef şema sürümü. */

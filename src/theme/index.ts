@@ -9,7 +9,7 @@
  *
  * Ekstra kütüphane yok; hiyerarşi renkten çok tipografi ve boşlukla kuruluyor.
  */
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 export const colors = {
   /* ---------------------------------------------------------------- */
@@ -149,12 +149,29 @@ export const typography = {
   display: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5 },
   title: { fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.3 },
   heading: { fontSize: 16, lineHeight: 21, fontWeight: '700', letterSpacing: -0.1 },
-  /** Okunacak metin: ferah satır aralığı. Faz 1'in blokları buraya oturacak. */
+  /** Okunacak metin: ferah satır aralığı. Blok editörünün paragrafı budur. */
   bodyLarge: { fontSize: 16, lineHeight: 26, fontWeight: '400' },
+  /**
+   * Not *içindeki* başlık. `title` ekran başlığı için 22 punto; panelin kendi
+   * başlığıyla aynı boyda bir blok başlığı hiyerarşiyi düzleştiriyordu.
+   */
+  blockHeading: { fontSize: 19, lineHeight: 26, fontWeight: '800', letterSpacing: -0.2 },
   body: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
   caption: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.4 },
   /** Büyük harfli alan etiketi. */
   label: { fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.9 },
+} as const;
+
+/**
+ * Yazı tipi aileleri. Tek aralıklı yüzü olan tek yer kod bloğu; adı platforma
+ * göre değişiyor ve her kullanımda `Platform.select` yazmak istemiyoruz.
+ */
+export const fonts = {
+  mono: Platform.select({
+    ios: 'Menlo',
+    android: 'monospace',
+    default: 'monospace',
+  }),
 } as const;
 
 /**

@@ -8,13 +8,17 @@
  */
 import { DEFAULT_SEED_TYPE } from '../game/config';
 import {
+  BLOCK_TYPES,
   HARVEST_QUALITIES,
   NOTE_STATUSES,
   SEED_TYPES,
+  type BlockType,
   type HarvestQuality,
   type InventoryItem,
   type InventoryRow,
   type Note,
+  type NoteBlock,
+  type NoteBlockRow,
   type NoteRow,
   type NoteStatus,
   type SeedType,
@@ -44,6 +48,9 @@ export const toSeedType = (value: string): SeedType =>
 export const toHarvestQuality = (value: string): HarvestQuality =>
   oneOf(HARVEST_QUALITIES, value, 'normal', 'quality');
 
+export const toBlockType = (value: string): BlockType =>
+  oneOf(BLOCK_TYPES, value, 'paragraph', 'block.type');
+
 export function mapNote(row: NoteRow): Note {
   return {
     id: row.id,
@@ -54,6 +61,20 @@ export function mapNote(row: NoteRow): Note {
     seed_type: toSeedType(row.seed_type),
     last_tended_at: row.last_tended_at,
     harvested_at: row.harvested_at ?? null,
+  };
+}
+
+export function mapNoteBlock(row: NoteBlockRow): NoteBlock {
+  return {
+    id: row.id,
+    note_id: row.note_id,
+    position: row.position,
+    type: toBlockType(row.type),
+    text: row.text ?? null,
+    // SQLite boolean bilmez; CHECK 0/1'e zorluyor ama yine de gevşek okuyoruz.
+    checked: row.checked !== 0,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 

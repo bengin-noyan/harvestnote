@@ -36,6 +36,9 @@ types → db (schema · repositories · mappers) → game (pure rules) → notif
       → providers/hooks → screens/components
 ```
 
+The note body lives in `note_blocks` (migration 2), reached through
+`db/repositories/blocks.ts` and rendered by `components/editor/`.
+
 `src/db/index.ts` is the data layer's public entry; UI should not reach into
 `database.ts` or `schema.ts` directly.
 
@@ -58,13 +61,20 @@ This distinction drives most of the design:
   regression, not a fix.
 - Reminders are derived too: the scheduled-notification set is a function of the DB,
   recomputed on every change rather than tracked in a column.
+- **`notes.content` is a derived projection of the blocks**, not dead weight. Every
+  block write recomputes it (plain text, dividers and blank lines dropped) inside the
+  same transaction. It exists so `buildNoteQuery`'s LIKE search and the card preview
+  keep working untouched; deleting the column would break both and force an FTS5
+  decision early. A list item's displayed number is derived the same way — from its
+  run of consecutive `numbered` siblings, not from a column.
 
 ### Time semantics
 
 - All timestamps are **epoch ms INTEGER**, never ISO strings.
 - `created_at` drives growth/maturity. `last_tended_at` drives weeds and reminders.
   Keeping them separate is load-bearing: a note the user just weeded or edited must
-  not immediately go weedy again.
+  not immediately go weedy again. Block writes count as tending too, so they refresh
+  it — which is why editor autosave goes through `notifyScheduleChanged()`.
 - Harvest **never deletes** a note — it stamps `harvested_at` and inserts into
   `inventory`, both in one transaction. The field is `harvested_at IS NULL`.
 
@@ -104,6 +114,17 @@ suspended there and that is exactly the moment the OS-scheduled set must be corr
 
 ## Invariants and traps
 
+- **A new table must also be added to `resetDatabase`** in `db/database.ts`. It drops
+  tables by name; one left out leaves a half-schema behind and the mistake surfaces
+  far from its cause.
+- **Block `position` is sparse (1000s), never an array index.** Inserting between two
+  blocks writes one row. When the gap between neighbours runs out, `positionFor`
+  renumbers the note and retries — do not "simplify" this into sequential positions.
+- **Anything that writes `notes.content` directly needs a block story.** The add-seed
+  sheet still does, which is why `listBlocksForEditing` seeds the first block from
+  `content`: migration 2's backfill was one-shot and cannot cover rows created later.
+  Without that seed the first autosave would overwrite the text with an empty
+  projection.
 - **Migrations are append-only.** `MIGRATIONS` in `src/db/schema.ts` is driven by
   `PRAGMA user_version`. Never edit a shipped entry; add a new one. Users' data is the
   only copy — no drop-and-recreate.
@@ -136,6 +157,43 @@ Per derived stage:
 
 The refusal on weedy taps is a product rule, not an oversight — the note is
 unreachable until the user clears it.
+
+## Editor contract (`src/components/editor/`)
+
+`BlockEditor` owns every keyboard decision because each one needs to see neighbouring
+blocks; `BlockRow` only knows its own text.
+
+| key / gesture | condition | effect |
+| --- | --- | --- |
+| Enter | list block, line empty | leave the list (back to `paragraph`) |
+| Enter | otherwise | split the block; list types continue themselves |
+| Backspace | caret at 0, type ≠ paragraph | back to `paragraph` |
+| Backspace | caret at 0, paragraph | merge into the previous block |
+| `/` | start of line, no space yet | block-type menu |
+| left handle | any block | type menu + delete |
+
+Platform reasons behind that table, all of them load-bearing:
+
+- **Enter is read from `onChangeText`, not `onKeyPress`.** Android fires `onKeyPress`
+  inconsistently; a multiline `TextInput` puts the newline in the text itself, which
+  both platforms agree on. Pasted multi-line text takes the same path and becomes one
+  block per line.
+- **Backspace has to use `onKeyPress` + tracked selection** — deleting leaves no trace
+  in the text to detect. On Android it may not fire in an empty input, so the handle
+  menu's "Bloğu sil" is the guaranteed escape, not a nicety.
+- **The type menu hangs off a left handle, not a long press.** RN `TextInput` has no
+  `onLongPress` (it swallows the touch for text selection), and wrapping it in a
+  `Pressable` is unreliable for the same reason. The handle always reserves its width
+  so focusing a block does not shift the line.
+- `BlockMenu` is an inline panel, never a `Modal` — the editor already sits inside
+  `BottomSheet`'s modal, and nesting modals breaks gestures and focus on Android.
+
+`useBlocks` splits writes by rhythm: **text** is local-first and debounced to SQLite,
+**structural** changes (insert/delete/merge) flush pending text, write, then reload.
+Predicting the list locally would mean re-implementing the position maths in a second
+place. `useBlocks` is called by `NoteDetailSheet`, not by `BlockEditor`, so that
+harvest and delete can `flush()` before they run — harvest stamps `harvested_at` and
+the projection refuses to write after that (`WHERE harvested_at IS NULL`).
 
 ## UI conventions
 

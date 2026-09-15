@@ -109,7 +109,10 @@ export async function closeDatabase(): Promise<void> {
  */
 export async function resetDatabase(): Promise<void> {
   const db = await getDatabase();
+  // Yeni bir tablo eklendiğinde buraya da eklenmeli: eksik kalan tablo
+  // sıfırlamadan sonra yarım şema bırakır ve hatası çok geç fark edilir.
   await db.execAsync(`
+    DROP TABLE IF EXISTS note_blocks;
     DROP TABLE IF EXISTS inventory;
     DROP TABLE IF EXISTS notes;
     DROP TABLE IF EXISTS settings;

@@ -35,6 +35,31 @@ export const SEED_TYPES = [
   'sunflower',
 ] as const;
 
+/**
+ * Bir not bloğunun türü. Notun içeriği artık tek bir metin değil, sıralı ve
+ * tipli blokların listesi; tür hem görünümü hem davranışı belirliyor.
+ */
+export type BlockType =
+  | 'paragraph' // düz metin
+  | 'heading' // not içi başlık
+  | 'todo' // işaretlenebilir madde
+  | 'bullet' // madde imi
+  | 'numbered' // sıralı madde
+  | 'quote' // alıntı
+  | 'divider' // yatay ayraç (metni yok)
+  | 'code'; // tek aralıklı blok
+
+export const BLOCK_TYPES = [
+  'paragraph',
+  'heading',
+  'todo',
+  'bullet',
+  'numbered',
+  'quote',
+  'divider',
+  'code',
+] as const;
+
 /** Hasat kalitesi — notun hangi durumdayken toplandığına bağlı. */
 export type HarvestQuality =
   | 'golden' // tam olgunlaşmışken (growing) hasat edildi
@@ -67,6 +92,26 @@ export interface Note {
    * edilenler tarladan çıkar ama satır olarak kalır (Inventory'nin kaynağı).
    */
   harvested_at: number | null;
+}
+
+/**
+ * note_blocks tablosu — notun içeriği.
+ *
+ * `position` seyrek artar (1000, 2000, 3000…): araya blok eklemek iki komşunun
+ * ortasına tek satır yazmak demek, tüm listeyi yeniden numaralamak değil.
+ * Aradaki boşluk tükenirse repository not'u baştan numaralar.
+ */
+export interface NoteBlock {
+  id: number;
+  note_id: number;
+  position: number;
+  type: BlockType;
+  /** `divider` dışındaki her blokta anlamlı; boş blok "" tutar, null değil. */
+  text: string | null;
+  /** Yalnızca `todo` için anlamlı. */
+  checked: boolean;
+  created_at: number;
+  updated_at: number;
 }
 
 /** Inventory tablosu — "kiler". */
@@ -105,6 +150,18 @@ export interface NoteRow {
   harvested_at: number | null;
 }
 
+export interface NoteBlockRow {
+  id: number;
+  note_id: number;
+  position: number;
+  type: string;
+  text: string | null;
+  /** SQLite'ta boolean yok: 0/1 INTEGER. */
+  checked: number;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface InventoryRow {
   id: number;
   original_note_id: number | null;
@@ -135,6 +192,25 @@ export interface UpdateNoteInput {
   title?: string;
   content?: string | null;
   seed_type?: SeedType;
+}
+
+export interface CreateBlockInput {
+  note_id: number;
+  /** Verilmezse 'paragraph'. */
+  type?: BlockType;
+  text?: string | null;
+  checked?: boolean;
+  /**
+   * Yeni blok bu bloğun hemen ardına girer. Verilmezse (veya null) notun
+   * sonuna eklenir.
+   */
+  after_block_id?: number | null;
+}
+
+export interface UpdateBlockInput {
+  type?: BlockType;
+  text?: string | null;
+  checked?: boolean;
 }
 
 export interface NoteQuery {
