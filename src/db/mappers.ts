@@ -1,10 +1,9 @@
 /**
- * Ham SQLite satırlarını domain modellerine çevirir.
+ * SQLite satırlarını uygulamadaki tiplere çeviriyor.
  *
- * SQLite union tipi bilmez: CHECK kısıtı olsa bile TS tarafına `string`
- * gelir. Elle düzenlenmiş bir .db dosyası veya gelecekte eklenip geri
- * alınan bir migration bilinmeyen değer bırakabilir; o durumda çökmek
- * yerine güvenli varsayılana düşüp uyarıyoruz.
+ * SQLite union tip bilmiyor, CHECK olsa bile TS tarafına `string` geliyor.
+ * Elle kurcalanmış bir db dosyası ya da geri alınmış bir migration tanımadık
+ * bir değer bırakabilir. Çökmek yerine varsayılana düşüp uyarı basıyoruz.
  */
 import { DEFAULT_SEED_TYPE } from '../game/config';
 import {
@@ -71,7 +70,7 @@ export function mapNoteBlock(row: NoteBlockRow): NoteBlock {
     position: row.position,
     type: toBlockType(row.type),
     text: row.text ?? null,
-    // SQLite boolean bilmez; CHECK 0/1'e zorluyor ama yine de gevşek okuyoruz.
+    // SQLite'ta boolean yok. CHECK 0/1'e zorluyor ama yine de gevşek okuyalım.
     checked: row.checked !== 0,
     created_at: row.created_at,
     updated_at: row.updated_at,

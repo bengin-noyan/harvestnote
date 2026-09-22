@@ -1,10 +1,9 @@
 /**
- * HarvestNote — Domain tipleri.
+ * Domain tipleri.
  *
- * Zaman politikası: tüm zaman damgaları SQLite'ta INTEGER (Unix epoch
- * milisaniye, UTC) olarak tutulur. ISO string yerine epoch seçildi çünkü
- * time-skip hesabı, sıralama ve WHERE karşılaştırmaları saat dilimi/format
- * belirsizliği olmadan doğrudan yapılabiliyor.
+ * Zaman kuralı: bütün zaman damgaları SQLite'ta INTEGER (epoch ms, UTC).
+ * ISO string yerine epoch kullanıyoruz çünkü time-skip hesabı, sıralama ve
+ * WHERE karşılaştırmaları saat dilimi derdi olmadan yapılabiliyor.
  */
 
 /* ------------------------------------------------------------------ */
@@ -19,7 +18,7 @@ export type NoteStatus =
 
 export const NOTE_STATUSES = ['planted', 'growing', 'weedy'] as const;
 
-/** Not türünü temsil eden ürün. UI ikonografisi buradan beslenecek. */
+/** Notun türünü temsil eden ürün. İkonlar buradan geliyor. */
 export type SeedType =
   | 'wheat' // hızlı, gündelik görev
   | 'carrot' // kısa not
@@ -36,8 +35,8 @@ export const SEED_TYPES = [
 ] as const;
 
 /**
- * Bir not bloğunun türü. Notun içeriği artık tek bir metin değil, sıralı ve
- * tipli blokların listesi; tür hem görünümü hem davranışı belirliyor.
+ * Blok türü. Notun içeriği artık tek bir metin değil, sıralı blokların
+ * listesi. Tür hem görünümü hem davranışı belirliyor.
  */
 export type BlockType =
   | 'paragraph' // düz metin
@@ -60,7 +59,7 @@ export const BLOCK_TYPES = [
   'code',
 ] as const;
 
-/** Hasat kalitesi — notun hangi durumdayken toplandığına bağlı. */
+/** Hasat kalitesi. Not hangi durumdayken toplandıysa ona göre. */
 export type HarvestQuality =
   | 'golden' // tam olgunlaşmışken (growing) hasat edildi
   | 'normal' // erken hasat (planted)
@@ -72,7 +71,7 @@ export const HARVEST_QUALITIES = ['golden', 'normal', 'withered'] as const;
 /* Domain modelleri                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Notes tablosu — "tohumlar". */
+/** Notes tablosu, yani tohumlar. */
 export interface Note {
   id: number;
   title: string;
@@ -82,51 +81,51 @@ export interface Note {
   status: NoteStatus;
   seed_type: SeedType;
   /**
-   * Son "bakım" anı (epoch ms): ekim, düzenleme veya ot temizleme.
-   * Yabani ot hesabı created_at'e değil buna bakar; aksi halde temizlenen
-   * bir not bir sonraki açılışta anında tekrar 'weedy' olurdu.
+   * Son bakım anı (epoch ms): ekim, düzenleme ya da ot temizleme.
+   * Ot hesabı created_at'e değil buna bakıyor, yoksa temizlediğin not bir
+   * sonraki açılışta anında tekrar 'weedy' oluyor.
    */
   last_tended_at: number;
   /**
-   * Hasat edildiyse epoch ms, edilmediyse null. Notlar silinmez; hasat
-   * edilenler tarladan çıkar ama satır olarak kalır (Inventory'nin kaynağı).
+   * Hasat edildiyse epoch ms, edilmediyse null. Notu silmiyoruz, hasat edilen
+   * tarladan çıkıyor ama satırı duruyor (kilerin kaynağı bu).
    */
   harvested_at: number | null;
 }
 
 /**
- * note_blocks tablosu — notun içeriği.
+ * note_blocks tablosu, notun içeriği.
  *
- * `position` seyrek artar (1000, 2000, 3000…): araya blok eklemek iki komşunun
- * ortasına tek satır yazmak demek, tüm listeyi yeniden numaralamak değil.
- * Aradaki boşluk tükenirse repository not'u baştan numaralar.
+ * `position` 1000'er artıyor. Araya blok eklemek iki komşunun ortasına tek
+ * satır yazmak demek, bütün listeyi yeniden numaralamak değil. Aradaki boşluk
+ * biterse repository notu baştan numaralıyor.
  */
 export interface NoteBlock {
   id: number;
   note_id: number;
   position: number;
   type: BlockType;
-  /** `divider` dışındaki her blokta anlamlı; boş blok "" tutar, null değil. */
+  /** divider dışında hep dolu. Boş blokta "" var, null değil. */
   text: string | null;
-  /** Yalnızca `todo` için anlamlı. */
+  /** Sadece todo bloklarında kullanılıyor. */
   checked: boolean;
   created_at: number;
   updated_at: number;
 }
 
-/** Inventory tablosu — "kiler". */
+/** Inventory tablosu, yani kiler. */
 export interface InventoryItem {
   id: number;
-  /** Kaynak not. Not fiziksel olarak silinirse null'a düşer (ON DELETE SET NULL). */
+  /** Kaynak not. Not gerçekten silinirse null oluyor (ON DELETE SET NULL). */
   original_note_id: number | null;
-  /** Hasat anındaki başlık kopyası — kiler geçmişi nottan bağımsız okunabilsin diye. */
+  /** Hasat anındaki başlığın kopyası. Kiler nottan bağımsız okunabilsin diye. */
   title: string;
   seed_type: SeedType;
   quality: HarvestQuality;
   harvested_at: number;
 }
 
-/** Settings tablosu — tek satırlık (id = 1) singleton. */
+/** Settings tablosu. Tek satır, id = 1. */
 export interface Settings {
   id: number;
   /** Uygulamanın en son açıldığı an (epoch ms). Time-skip'in referans noktası. */
@@ -136,8 +135,8 @@ export interface Settings {
 /* ------------------------------------------------------------------ */
 /* Ham SQLite satırları                                                */
 /* ------------------------------------------------------------------ */
-/* SQLite union tiplerini bilmez; status/seed_type/quality string olarak    */
-/* döner. Row tiplerini ayrı tutup mapper'da doğruluyoruz.                 */
+// SQLite union tip bilmiyor, status/seed_type/quality string olarak geliyor.
+// Row tiplerini ayrı tutup mapper'da kontrol ediyoruz.
 
 export interface NoteRow {
   id: number;
@@ -184,7 +183,7 @@ export interface CreateNoteInput {
   title: string;
   content?: string | null;
   seed_type?: SeedType;
-  /** Test/seed amaçlı zaman enjeksiyonu; verilmezse Date.now(). */
+  /** Test için zamanı dışarıdan verebilmek. Boşsa Date.now(). */
   created_at?: number;
 }
 
@@ -214,7 +213,7 @@ export interface UpdateBlockInput {
 }
 
 export interface NoteQuery {
-  /** Sadece tarladakiler (hasat edilmemiş) — varsayılan true. */
+  /** Sadece tarladakiler (hasat edilmemiş). Varsayılan true. */
   onlyActive?: boolean;
   status?: NoteStatus | NoteStatus[];
   seed_type?: SeedType;
@@ -235,7 +234,7 @@ export interface InventoryQuery {
 /* Time-skip sonucu                                                    */
 /* ------------------------------------------------------------------ */
 
-/** Bir açılışta simüle edilen "geçen zamanın" özeti. UI bunu rapor eder. */
+/** Açılışta simüle edilen geçen zamanın özeti. UI bunu gösteriyor. */
 export interface TimeSkipResult {
   /** Simülasyon fiilen çalıştı mı (ilk açılış veya eşik altındaysa false). */
   didRun: boolean;

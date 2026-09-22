@@ -1,10 +1,10 @@
 /**
- * Ot hatırlatmasına dokunulduğunda ilgili notu bildiren kanca.
+ * Ot hatırlatmasına dokununca hangi notun açılacağını söyleyen hook.
  *
- * İki yol var: uygulama zaten açıkken gelen dokunuş (listener) ve uygulamayı
- * bildirimin başlattığı durum (`getLastNotificationResponseAsync`). İkincisi
- * yeniden başlatmalar arasında da aynı yanıtı döndürdüğü için uygulama ömrü
- * başına bir kez işleniyor; aksi halde her açılışta aynı not açılırdı.
+ * İki durum var: uygulama açıkken gelen dokunuş (listener) ve uygulamayı
+ * bildirimin başlattığı durum (getLastNotificationResponseAsync). İkincisi
+ * her yeniden başlatmada aynı yanıtı döndürüyor, o yüzden bir kez işliyoruz.
+ * Yoksa her açılışta aynı not açılıyordu.
  */
 import * as Notifications from 'expo-notifications';
 import { useEffect } from 'react';
@@ -18,7 +18,7 @@ function noteIdFrom(response: Notifications.NotificationResponse): number | null
   const fromIdentifier = noteIdFromReminderId(request.identifier);
   if (fromIdentifier !== null) return fromIdentifier;
 
-  // Yedek yol: tanımlayıcı beklenmedik biçimdeyse içerikteki veriye bak.
+  // Identifier beklediğimiz biçimde değilse content.data'ya bakıyoruz.
   const raw = request.content.data?.noteId;
   const id = typeof raw === 'string' ? Number(raw) : raw;
   return typeof id === 'number' && Number.isInteger(id) ? id : null;
@@ -30,8 +30,8 @@ export function useReminderTap(onTap: (noteId: number) => void): void {
 
     if (!initialResponseHandled) {
       initialResponseHandled = true;
-      // Bu çağrı senkron da fırlatabiliyor (bildirim modülü hiç kurulamamışsa),
-      // o yüzden .catch() tek başına yetmiyor.
+      // Bu çağrı senkron da hata atabiliyor (bildirim modülü hiç yoksa),
+      // o yüzden tek başına .catch() yetmiyor.
       try {
         void Notifications.getLastNotificationResponseAsync()
           .then((response) => {
@@ -47,13 +47,10 @@ export function useReminderTap(onTap: (noteId: number) => void): void {
       }
     }
 
-    /**
-     * Dinleyici kurulumu senkron ve fırlatabilir: expo-notifications her
-     * ortamda tam desteklenmiyor (Expo Go'da Android tarafı kısıtlı). Bunu
-     * korumasız bırakmak, bildirimleri olmayan bir ortamda TÜM ekranı
-     * çökertiyordu — oysa kural şu: bildirim hataları yutulur, uygulama
-     * bildirimler olmadan da çalışmak zorunda.
-     */
+    // Listener kurulumu senkron ve hata atabiliyor. expo-notifications her
+    // ortamda tam desteklenmiyor (Expo Go'da Android kısıtlı). try'sız
+    // bırakınca bildirimi olmayan ortamda bütün ekran çöküyordu. Kural:
+    // bildirim hataları yutulur, uygulama onlarsız da çalışır.
     let subscription: Notifications.EventSubscription | null = null;
     try {
       subscription = Notifications.addNotificationResponseReceivedListener(

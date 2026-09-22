@@ -1,7 +1,5 @@
-/**
- * Settings repository'si — tek satırlık (id = 1) singleton tablo.
- * Time-skip'in referans noktası `last_opened_at` burada tutulur.
- */
+// Ayarlar tablosu. Tek satır var (id = 1).
+// Time-skip'in baktığı `last_opened_at` burada duruyor.
 import type { Settings, SettingsRow } from '../../types';
 import { getDatabase, type Database } from '../database';
 import { mapSettings } from '../mappers';
@@ -9,15 +7,15 @@ import { SETTINGS_ROW_ID } from '../schema';
 
 export interface EnsureSettingsResult {
   settings: Settings;
-  /** Satır bu çağrıda oluşturulduysa true — yani ilk açılış. */
+  /** Satır bu çağrıda açıldıysa true, yani ilk açılış. */
   created: boolean;
 }
 
 /**
- * Ayar satırını okur, yoksa `now` ile oluşturur.
+ * Ayar satırını okur, yoksa `now` ile açar.
  *
- * İlk açılışta `last_opened_at`'i "şimdi" yapmak kritik: 0 bırakılsaydı
- * time-skip ilk açılışta 56 yıllık bir boşluk görüp her şeyi ot bastırırdı.
+ * İlk açılışta last_opened_at'i "şimdi" yapmak şart. 0 bırakınca time-skip
+ * aradaki 56 yılı geçmiş sanıp bütün notları otlandırıyor.
  */
 export async function ensureSettings(
   now: number = Date.now(),
@@ -48,12 +46,12 @@ export async function getSettings(): Promise<Settings | null> {
 }
 
 /**
- * Açılış damgasını günceller. Time-skip hesabı BİTTİKTEN sonra çağrılmalı,
- * yoksa geçen süre sıfırlanır ve simülasyon hiç çalışmaz.
+ * Açılış damgasını günceller. Time-skip hesabı bittikten SONRA çağrılmalı,
+ * yoksa geçen süre sıfırlanıyor ve simülasyon hiç çalışmıyor.
  *
- * `executor`: exclusive bir transaction içinden çağrılıyorsa transaction
- * nesnesi verilmeli — expo-sqlite'ta o sırada global `db` üzerinden yazmak
- * kilidi beklediği için kilitlenmeye yol açar.
+ * executor: exclusive transaction içinden çağırıyorsanız transaction
+ * nesnesini verin. Orada global `db` ile yazmak kendi kilidini beklediği
+ * için uygulama donuyor.
  */
 export async function setLastOpenedAt(
   now: number = Date.now(),

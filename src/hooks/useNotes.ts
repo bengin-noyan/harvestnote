@@ -1,9 +1,9 @@
 /**
- * Tarla ekranının veri kancası: repository çağrılarını sarar, iyimser
- * (optimistic) güncelleme yapar ve provider'ın `revision` sayacına abone olur.
+ * Tarla ekranının verisi. Repository çağrılarını sarıyor, optimistic
+ * güncelleme yapıyor ve provider'daki `revision` sayacını dinliyor.
  *
- * İyimser güncelleme burada kozmetik değil: hasat animasyonu biterken kartın
- * listede kalıp bir kare sonra kaybolması "takılma" gibi hissettiriyordu.
+ * Optimistic güncelleme şart: hasat animasyonu bitince kart bir kare daha
+ * listede kalıyordu ve uygulama takılıyormuş gibi duruyordu.
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -22,9 +22,8 @@ import type { CreateNoteInput, Note, UpdateNoteInput } from '../types';
 export interface UseNotesResult {
   notes: Note[];
   /**
-   * Not id'sine göre yapılacak sayımı. Olgunluk hesabının emek payı buradan
-   * geliyor; sayımı olmayan not (yapılacak bloğu yok) eskisi gibi yalnızca
-   * zamanla olgunlaşır.
+   * Not id'sine göre yapılacak sayısı. Olgunluğun emek kısmı buradan geliyor.
+   * Todo bloğu olmayan not eskisi gibi sadece zamanla olgunlaşıyor.
    */
   labor: Map<number, TodoCount>;
   loading: boolean;
@@ -37,16 +36,15 @@ export interface UseNotesResult {
 }
 
 export function useNotes(): UseNotesResult {
-  // Buradaki beş yazmanın hepsi zamanlama kanalını kullanıyor: ekim yeni bir
-  // hatırlatma doğuruyor, hasat ve silme kurulu olanı geçersiz kılıyor, ot
-  // temizleme ve düzenleme ise `last_tended_at`'i tazeleyerek hatırlatmanın
-  // anını ileri kaydırıyor (bkz. updateNote).
+  // Aşağıdaki beş yazma da zamanlama kanalını kullanıyor. Ekim yeni hatırlatma
+  // açıyor, hasat ve silme kuruluyu iptal ediyor, ot temizleme ve düzenleme de
+  // last_tended_at'i tazeleyip hatırlatmayı ileri kaydırıyor (bkz. updateNote).
   const { revision, notifyScheduleChanged, status } = useFarm();
   const [notes, setNotes] = useState<Note[]>([]);
   const [labor, setLabor] = useState<Map<number, TodoCount>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  /** Liste ve sayım birlikte okunur: ikisi aynı anın görüntüsü olmalı. */
+  /** Liste ve sayımı birlikte okuyoruz, ikisi aynı ana ait olsun. */
   const load = useCallback(
     () => Promise.all([listFieldNotes(), getTodoCounts()]),
     [],
@@ -102,7 +100,7 @@ export function useNotes(): UseNotesResult {
 
   const harvest = useCallback(
     async (id: number) => {
-      // Kart zaten küçülüp kayboldu; listeden hemen düşür.
+      // Kart zaten animasyonla kayboldu, listeden de hemen çıkaralım.
       setNotes((prev) => prev.filter((n) => n.id !== id));
       await harvestNote(id);
       notifyScheduleChanged();

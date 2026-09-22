@@ -1,8 +1,5 @@
-/**
- * Yatay tohum seçici. Görevin niteliği tohumun türünü belirler; tür de
- * olgunlaşma süresini (bkz. SEED_CATALOG) belirlediği için bu seçim
- * kozmetik değil, oyunun ritmini ayarlıyor.
- */
+// Yatay tohum seçici. Seçilen tür olgunlaşma süresini de belirliyor
+// (bkz. SEED_CATALOG), yani sadece görsel bir tercih değil.
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -57,11 +54,8 @@ export function SeedPicker({ value, onChange }: Props) {
 
 const styles = StyleSheet.create({
   row: { gap: spacing.sm, paddingVertical: spacing.xs, paddingRight: spacing.lg },
-  /**
-   * Seçilmemiş tohum sakin bir zeminde durur; seçim kenarlıkla değil
-   * altın dolguyla anlatılır — dört beş çip yan yanayken kalın kenarlıklar
-   * hepsini birden öne çıkarıyordu.
-   */
+  // Seçimi kenarlıkla değil altın dolguyla gösteriyoruz. Beş çip yan yanayken
+  // kalın kenarlıklar hepsini birden öne çıkarıyordu.
   chip: {
     width: 108,
     alignItems: 'center',

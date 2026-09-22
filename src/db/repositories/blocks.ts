@@ -1,19 +1,18 @@
 /**
- * Not blokları repository'si — notun içeriği buradan geçer.
+ * Not blokları repository'si. Notun içeriği buradan geçiyor.
  *
- * İki kural bütün dosyayı biçimlendiriyor:
+ * İki kural dosyanın tamamını belirliyor:
  *
- * 1. **Seyrek pozisyon.** Bloklar 1000'er artan `position` ile duruyor. Araya
- *    blok eklemek iki komşunun ortasına tek satır yazmak demek; listeyi baştan
- *    numaralamak gerekmiyor. Boşluk tükenirse (aynı yere üst üste ~10 ekleme)
+ * 1. Pozisyonlar seyrek. Bloklar 1000'er artan `position` ile duruyor. Araya
+ *    blok eklemek iki komşunun ortasına tek satır yazmak demek, listeyi baştan
+ *    numaralamak gerekmiyor. Boşluk biterse (aynı yere üst üste ~10 ekleme)
  *    `renumber` devreye girip notu 1000'erliğe geri çekiyor.
  *
- * 2. **`notes.content` düşürülmedi.** Blokların düz metin izdüşümü olarak
- *    kalıyor ve her yazmada tazeleniyor. Böylece `buildNoteQuery`'deki LIKE
- *    araması ve kart önizlemesi tek satır değişmeden çalışıyor — ölü sütun
- *    sanıp temizlemeye kalkma.
+ * 2. notes.content duruyor, silmedik. Blokların düz metin hali olarak kalıyor
+ *    ve her yazmada güncelleniyor. Böylece buildNoteQuery'deki LIKE araması ve
+ *    kart önizlemesi hiç değişmeden çalışıyor. Ölü sütun sanıp silmeyin.
  *
- * Her yazma ayrıca `notes.last_tended_at`'i tazeler: yazmak da bir bakımdır.
+ * Her yazma ayrıca notes.last_tended_at'i tazeliyor, yazmak da bakım sayılıyor.
  */
 import type {
   CreateBlockInput,
@@ -50,15 +49,14 @@ export async function getBlockById(id: number): Promise<NoteBlock | null> {
 }
 
 /**
- * Editörün açılışta çağırdığı hâli: bloğu olmayan not tek bir paragrafla
- * açılsın ki imleç koyacak bir yer olsun.
+ * Editörün açılışta kullandığı hali. Bloğu olmayan not tek bir paragrafla
+ * açılsın ki imleç koyacak yer olsun.
  *
- * İlk blok boştan değil `notes.content`'ten doğuyor. Migration 2'nin geri
- * doldurması tek seferlikti; ama tohum ekme paneli hâlâ nota doğrudan
- * `content` yazıyor, yani migration'dan SONRA doğan notların metni var,
- * bloğu yok. Burada tohumlamasaydık editör boş bir paragraf açar, ilk
- * yazmada izdüşüm o metnin üstüne yazar ve kullanıcının yazdığı detay
- * sessizce kaybolurdu.
+ * İlk blok boş değil, notes.content'ten geliyor. Migration 2'nin geri
+ * doldurması tek seferlikti ama tohum ekleme paneli hâlâ nota doğrudan content
+ * yazıyor, yani migration'dan sonra açılan notların metni var, bloğu yok.
+ * Burada doldurmasak editör boş paragraf açıyor, ilk yazmada izdüşüm o metnin
+ * üstüne yazıyor ve kullanıcının yazdığı detay sessizce uçuyor.
  */
 export async function listBlocksForEditing(
   noteId: number,
@@ -88,12 +86,12 @@ export interface TodoCount {
 /**
  * Bütün notların yapılacak sayımı, tek sorguda.
  *
- * Emek↔olgunluk köprüsünün girdisi bu (bkz. `maturityProgress`). Not başına
- * ayrı sorgu atmak tarla ızgarasında not sayısı kadar sorgu demekti; burası
- * tek `GROUP BY` ile dönüyor ve `idx_blocks_note` üzerinden gidiyor.
+ * Olgunluk hesabının emek kısmı bunu kullanıyor (bkz. maturityProgress). Not
+ * başına ayrı sorgu atmak tarlada not sayısı kadar sorgu demekti, burası tek
+ * GROUP BY ile dönüyor ve idx_blocks_note'u kullanıyor.
  *
- * Oyun katmanına satır değil yalnızca sayım gidiyor: `game/stages.ts`'in
- * DB'den bağımsız kalması şart.
+ * Oyun katmanına satırları değil sadece sayıyı veriyoruz, game/stages.ts
+ * DB'den bağımsız kalmalı.
  */
 export async function getTodoCounts(): Promise<Map<number, TodoCount>> {
   const db = await getDatabase();
@@ -112,7 +110,7 @@ export async function getTodoCounts(): Promise<Map<number, TodoCount>> {
 
   const counts = new Map<number, TodoCount>();
   for (const row of rows) {
-    // SUM boş kümede NULL döner; CHECK 0/1'e zorluyor ama yine de koruyoruz.
+    // SUM boş kümede NULL dönüyor, o yüzden ?? 0 koydum.
     counts.set(row.note_id, { done: row.done ?? 0, total: row.total });
   }
   return counts;
@@ -155,8 +153,8 @@ export async function createBlock(
 }
 
 /**
- * Blok içeriğini/türünü günceller. Verilmeyen alanlar olduğu gibi kalır —
- * editörün otomatik kaydı yalnızca `text` gönderiyor.
+ * Bloğun metnini/türünü günceller. Verilmeyen alanlar olduğu gibi kalıyor,
+ * editörün otomatik kaydı sadece text gönderiyor.
  */
 export async function updateBlock(
   id: number,
@@ -169,8 +167,8 @@ export async function updateBlock(
   if (input.type !== undefined) {
     sets.push('type = ?');
     params.push(input.type);
-    // Ayraç metin taşımaz; türe çevrilirken eski metin kalsaydı izdüşümde
-    // görünmeyen bir satır olarak yaşamaya devam ederdi.
+    // Ayraçta metin olmuyor. Tür çevrilirken eski metin kalırsa izdüşümde
+    // görünmeyen bir satır olarak yaşamaya devam ediyor.
     if (input.type === 'divider' && input.text === undefined) {
       sets.push('text = ?');
       params.push('');
@@ -213,8 +211,8 @@ export async function updateBlock(
 }
 
 /**
- * Bloğu siler. Notun son bloğu silinirse yerine boş bir paragraf konur:
- * bloksuz not editörde imleç koyacak yer bırakmıyor.
+ * Bloğu siler. Notun son bloğu silinirse yerine boş paragraf koyuyoruz,
+ * bloksuz notta imleç koyacak yer kalmıyor.
  */
 export async function deleteBlock(
   id: number,
@@ -259,8 +257,8 @@ export async function deleteBlock(
 /**
  * Yeni bloğun pozisyonu.
  *
- * `after` verilmezse sona eklenir. Verilirse iki komşunun ortası hesaplanır;
- * ortada tam sayı kalmadıysa not baştan numaralanıp hesap tekrarlanır.
+ * after verilmezse sona ekliyor. Verilirse iki komşunun ortasını hesaplıyor,
+ * ortada tam sayı kalmadıysa notu baştan numaralayıp tekrar deniyor.
  */
 async function positionFor(
   txn: Database,
@@ -279,8 +277,8 @@ async function positionFor(
   const gap = await nextGap(txn, noteId, prev.position);
   if (gap !== null) return gap;
 
-  // Boşluk tükendi: notu 1000'erliğe geri çek ve tekrar dene. Yeniden
-  // numaralama pozisyonları değiştirdiği için komşuyu yeniden okuyoruz.
+  // Boşluk bitti. Notu 1000'erliğe geri çekip tekrar deniyoruz. Numaralama
+  // pozisyonları değiştirdiği için komşuyu baştan okumak gerekiyor.
   await renumber(txn, noteId);
   const moved = await txn.getFirstAsync<{ position: number }>(
     'SELECT position FROM note_blocks WHERE id = ? AND note_id = ?',
@@ -289,8 +287,8 @@ async function positionFor(
   if (!moved) return appendPosition(txn, noteId);
 
   const retry = await nextGap(txn, noteId, moved.position);
-  // Buraya düşmek için notun 1000'den fazla bloğu olması gerekir; sona
-  // eklemek bloğu kaybetmekten iyidir.
+  // Buraya düşmek için notun 1000'den fazla bloğu olması lazım. Sona eklemek
+  // bloğu tamamen kaybetmekten iyi.
   return retry ?? appendPosition(txn, noteId);
 }
 
@@ -302,7 +300,7 @@ async function appendPosition(txn: Database, noteId: number): Promise<number> {
   return (last?.position ?? 0) + POSITION_STEP;
 }
 
-/** `after` ile bir sonraki bloğun arasındaki tam sayı; yer yoksa null. */
+/** after ile sonraki blok arasındaki tam sayı. Yer yoksa null. */
 async function nextGap(
   txn: Database,
   noteId: number,
@@ -337,12 +335,11 @@ async function renumber(txn: Database, noteId: number): Promise<void> {
 }
 
 /**
- * `notes.content`'i blokların düz metin izdüşümüyle tazeler ve bakım saatini
- * ileri alır.
+ * notes.content'i blokların düz metin halinden yeniden yazıyor ve bakım
+ * saatini ileri alıyor.
  *
- * İzdüşüm SQL'de değil burada kuruluyor: sıralı `group_concat` SQLite
- * sürümüne bağlı, blokları zaten okumak gerekiyor ve boş/ayraç satırlarını
- * elemek JS tarafında okunur kalıyor.
+ * Bunu SQL'de yapmadım: sıralı group_concat SQLite sürümüne bağlı, blokları
+ * zaten okumak gerekiyor ve boş/ayraç satırlarını elemek JS'te daha okunur.
  */
 async function refreshNoteProjection(
   txn: Database,

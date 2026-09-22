@@ -1,13 +1,11 @@
 /**
- * Çalışma alanı kenar çubuğu — Notion'ın sol sütununun karşılığı.
+ * Kenar çubuğu. Notion'daki sol sütunun karşılığı.
  *
- * İçerik sırası bilinçli: önce *arama*, sonra *görünümler*, sonra *notlar*.
- * Notion'da da böyle; aradığın şeye ya adıyla ya da bulunduğu görünümle
- * ulaşırsın, ikisi de listenin üstünde durur.
+ * Sıra bilerek böyle: önce arama, sonra görünümler, sonra notlar. Notion'da da
+ * aynı şekilde, aradığın şeye ya adıyla ya da görünümüyle ulaşıyorsun.
  *
- * Kenar çubuğu kağıdın bir tık içine gömülü (`surfaceSunken`): içerik alanı
- * beyaz kalsın, göz nereye bakacağını kenarlıktan değil zemin farkından
- * anlasın.
+ * Zemini bir tık gömük (surfaceSunken) ki içerik alanı beyaz kalsın ve ayrım
+ * kenarlıktan değil zemin farkından okunsun.
  */
 import React from 'react';
 import {
@@ -52,7 +50,7 @@ interface Props {
   onSelectView: (view: WorkspaceView) => void;
   onSelectNote: (id: number) => void;
   onAdd: () => void;
-  /** Dar ekranda çekmeceyi kapatan düğme; geniş ekranda gizli. */
+  /** Dar ekranda çekmeceyi kapatan düğme. Geniş ekranda gizli. */
   onClose?: () => void;
 }
 
@@ -110,8 +108,8 @@ export function Sidebar({
       >
         <Text style={styles.section}>Görünümler</Text>
         {VIEWS.map((entry) => {
-          // Not açıkken hiçbir görünüm "seçili" görünmemeli: içerik alanında
-          // duran şey o görünüm değil, notun sayfası.
+          // Not açıkken hiçbir görünüm seçili görünmesin, çünkü ekranda duran
+          // şey görünüm değil notun sayfası.
           const active = openNoteId === null && view === entry.key;
           return (
             <Pressable
@@ -165,7 +163,7 @@ export function Sidebar({
                 >
                   {note.title}
                 </Text>
-                {/* Aşama rozeti değil nokta: liste sakin kalsın. */}
+                {/* Rozet yerine küçük bir nokta, liste sakin dursun. */}
                 <View
                   style={[
                     styles.stageDot,
@@ -202,10 +200,8 @@ const styles = StyleSheet.create({
   },
   brand: { ...typography.heading, color: colors.textPrimary },
   close: { ...typography.heading, color: colors.textMuted },
-  /**
-   * Arama kutusu kenarlıksız: kenar çubuğu zaten gömülü bir yüzey, kutunun
-   * kendi çerçevesi olunca iki kat girinti gibi duruyordu.
-   */
+  // Arama kutusunun kenarlığı yok. Kenar çubuğu zaten gömük bir yüzey, kutuya
+  // da çerçeve koyunca iki kat girinti gibi duruyordu.
   search: {
     ...typography.body,
     color: colors.textPrimary,

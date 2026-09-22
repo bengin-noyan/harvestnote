@@ -1,12 +1,11 @@
 /**
- * Veritabanı bağlantı katmanı.
+ * DB bağlantısı.
  *
- * - Tek bir bağlantı (singleton promise) paylaşılır: expo-sqlite'ta aynı
- *   dosyayı birden çok kez açmak WAL altında kilit/tutarlılık sorunları
- *   çıkarabilir.
- * - Açılış sırasında pragmalar ayarlanır ve bekleyen migration'lar koşar.
- * - `getDatabase()` çağıran her yer aynı hazır bağlantıyı alır; init yarışı
- *   (aynı anda iki çağrı) promise cache'i sayesinde tek sefere iner.
+ * - Tek bağlantı tutuyoruz (promise'i cache'liyoruz). expo-sqlite'ta aynı
+ *   dosyayı birkaç kez açmak WAL'da kilit sorunu çıkarabiliyor.
+ * - Açarken pragmaları set edip bekleyen migration'ları koşturuyoruz.
+ * - Aynı anda iki getDatabase() çağrısı gelirse cache sayesinde tek açılış
+ *   oluyor.
  */
 import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
@@ -17,11 +16,11 @@ export type Database = SQLite.SQLiteDatabase;
 
 let connection: Promise<Database> | null = null;
 
-/** Hazır (migrate edilmiş) bağlantıyı döndürür. İlk çağrıda açar. */
+/** Migrate edilmiş bağlantıyı verir, ilk çağrıda açar. */
 export function getDatabase(): Promise<Database> {
   if (!connection) {
     connection = open().catch((error) => {
-      // Başarısız promise'i cache'te bırakma: sonraki çağrı tekrar denesin.
+      // Hatalı promise cache'te kalmasın, sonraki çağrı yeniden denesin.
       connection = null;
       throw error;
     });
@@ -30,9 +29,8 @@ export function getDatabase(): Promise<Database> {
 }
 
 /**
- * Uygulama açılışında bir kez çağrılır. getDatabase() zaten tembel açılış
- * yapıyor; bu fonksiyon niyeti okunur kılmak ve açılış hatasını erken
- * yakalamak için var.
+ * Açılışta bir kez çağrılıyor. getDatabase() zaten lazy açıyor, bu sadece
+ * niyeti belli etsin ve hatayı erken görelim diye duruyor.
  */
 export async function initDatabase(): Promise<Database> {
   return getDatabase();
@@ -50,7 +48,7 @@ async function open(): Promise<Database> {
   return db;
 }
 
-/** user_version'dan hedefe kadar bekleyen migration'ları sırayla uygular. */
+/** user_version'dan hedefe kadar bekleyen migration'ları sırayla koşar. */
 async function migrate(db: Database): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>(
     'PRAGMA user_version',
@@ -66,8 +64,8 @@ async function migrate(db: Database): Promise<void> {
   for (const migration of pending) {
     await db.withTransactionAsync(async () => {
       await db.execAsync(migration.statements);
-      // PRAGMA parametre bağlamayı desteklemez; değer bizim sabitimiz olduğu
-      // için interpolasyon burada güvenli.
+      // PRAGMA'ya parametre bağlanamıyor. Değer bizim sabitimiz, o yüzden
+      // buradaki interpolasyon sorun değil.
       await db.execAsync(`PRAGMA user_version = ${migration.version}`);
     });
   }
@@ -76,14 +74,14 @@ async function migrate(db: Database): Promise<void> {
 /**
  * Yazma transaction'i.
  *
- * Native'de exclusive transaction kullanilir: iki hizli jest ayni satiri
- * ayni anda degistiremesin. expo-sqlite'in web uygulamasi bunu desteklemiyor
- * (`withExclusiveTransactionAsync is not supported on web`), orada duz
- * transaction'a duseriz — web tek is parcacikli oldugu icin korunacak bir
- * yaris zaten yok, atomiklik ise BEGIN/COMMIT ile korunur.
+ * Native'de exclusive kullaniyoruz ki iki hizli jest ayni satiri ayni anda
+ * degistirmesin. Web'de expo-sqlite bunu desteklemiyor
+ * ("withExclusiveTransactionAsync is not supported on web"), orada duz
+ * transaction'a dusuyoruz. Web tek thread oldugu icin yaris zaten yok,
+ * atomikligi de BEGIN/COMMIT sagliyor.
  *
- * Her iki yolda da blok icindeki sorgular verilen `txn` uzerinden gitmeli;
- * exclusive transaction sirasinda global `db` ile yazmak kilitlenme demek.
+ * Iki durumda da icerideki sorgular `txn` uzerinden gitmeli. Exclusive
+ * transaction sirasinda global `db` ile yazinca kilitleniyor.
  */
 export async function withWriteTransaction(
   db: Database,
@@ -95,7 +93,7 @@ export async function withWriteTransaction(
   return db.withExclusiveTransactionAsync(task);
 }
 
-/** Bağlantıyı kapatır (test teardown / logout senaryoları). */
+/** Bağlantıyı kapatır. Test sonu / çıkış senaryoları için. */
 export async function closeDatabase(): Promise<void> {
   if (!connection) return;
   const db = await connection.catch(() => null);
@@ -103,14 +101,11 @@ export async function closeDatabase(): Promise<void> {
   await db?.closeAsync();
 }
 
-/**
- * DİKKAT: tüm veriyi siler. Sadece geliştirme/test içindir; üretim
- * akışlarından çağrılmamalı.
- */
+/** DİKKAT: bütün veriyi siliyor. Sadece geliştirme için, üretimde çağırmayın. */
 export async function resetDatabase(): Promise<void> {
   const db = await getDatabase();
-  // Yeni bir tablo eklendiğinde buraya da eklenmeli: eksik kalan tablo
-  // sıfırlamadan sonra yarım şema bırakır ve hatası çok geç fark edilir.
+  // Yeni tablo eklerken buraya da eklemeyi unutmayın. Eksik kalan tablo
+  // sıfırlamadan sonra yarım şema bırakıyor, hatayı çok geç fark ediyorsunuz.
   await db.execAsync(`
     DROP TABLE IF EXISTS note_blocks;
     DROP TABLE IF EXISTS inventory;

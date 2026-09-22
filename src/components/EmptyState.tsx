@@ -1,4 +1,4 @@
-/** Boş liste durumu — tarla, liste ve kiler için ortak. */
+// Boş liste ekranı. Tarla, liste ve kiler aynı bileşeni kullanıyor.
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -11,15 +11,15 @@ interface Props {
   message: string;
   onDark?: boolean;
   /**
-   * Boş durum bir çıkış yolu sunabilmeli: "tarla boş" diyip kullanıcıyı
-   * ekmeye götürecek düğmeyi göstermemek onu kenar çubuğunu aramaya
-   * bırakıyor. İkisi birlikte verilmezse düğme çizilmez.
+   * Boş ekranda bir çıkış yolu olsun istedim. Sadece "tarla boş" yazınca
+   * kullanıcı ekme düğmesini kenar çubuğunda aramak zorunda kalıyor.
+   * İkisi birden verilmezse düğme çizilmiyor.
    */
   actionLabel?: string;
   onAction?: () => void;
 }
 
-/** `onDark` yalnızca toprak yüzeylerde gerekir; kabuk artık aydınlık. */
+/** onDark sadece toprak zeminlerde lazım, kabuk artık açık renk. */
 export function EmptyState({
   emoji,
   title,

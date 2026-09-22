@@ -1,7 +1,5 @@
-/**
- * Veri katmanının tek giriş noktası. UI ve hook'lar burayı import etsin;
- * `database.ts`/`schema.ts` gibi iç modüllere doğrudan bağlanmasın.
- */
+// DB tarafına hep buradan giriyoruz. UI, database.ts ya da schema.ts'i
+// doğrudan import etmesin.
 export {
   closeDatabase,
   getDatabase,

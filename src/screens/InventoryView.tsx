@@ -1,11 +1,10 @@
 /**
- * Kiler görünümü — hasat edilmiş görevlerin sergilendiği raf.
+ * Kiler: hasat edilen görevlerin durduğu raf.
  *
- * Buradaki kayıtlar `inventory` tablosundan gelir; notun kendisi silinse bile
- * hasat geçmişi durur (ON DELETE SET NULL), yani "yaptıklarım" listesi
- * hiçbir zaman geriye doğru bozulmaz.
+ * Kayıtlar inventory tablosundan geliyor. Not silinse bile hasat kaydı
+ * kalıyor (ON DELETE SET NULL), yani geçmiş bozulmuyor.
  *
- * Kendi güvenli alanını yönetmiyor: kabuğun içindeki görünümlerden biri.
+ * Safe area ile uğraşmıyor, kabuğun içindeki görünümlerden biri.
  */
 import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
@@ -104,7 +103,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  /** Raf sayacı: kenarlıksız, yalnızca hafif bir zeminle ayrılan bir öbek. */
+  /** Raf sayacı. Kenarlık yok, hafif bir zeminle ayrılıyor. */
   shelfItem: {
     flexDirection: 'row',
     alignItems: 'center',

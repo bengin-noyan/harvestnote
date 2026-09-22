@@ -1,13 +1,13 @@
 /**
- * Tarla görünümü — toprak parsellerinden oluşan ızgara.
+ * Tarla görünümü. Toprak parsellerinden oluşan ızgara.
  *
- * Artık bir "ekran" değil, kabuğun içindeki görünümlerden biri: veriyi,
- * panelleri ve ipucu balonunu `AppShell` yönetiyor, burası yalnızca düzen ve
- * jestler. Kendi `useNotes()` çağrısı yok — aynı sorgunun kenar çubuğuyla
- * birlikte iki kez koşmaması için.
+ * Artık ayrı bir ekran değil, kabuğun içindeki görünümlerden biri. Veriyi,
+ * panelleri ve ipucu balonunu AppShell yönetiyor, burada sadece düzen ve
+ * jestler var. Kendi useNotes() çağrısı yok, yoksa aynı sorgu kenar çubuğuyla
+ * birlikte iki kere koşuyor.
  *
- * Notların ardına her zaman boş parsel eklenir: ekim başlıktaki bir butonla
- * değil, boş toprağa dokunarak yapılır.
+ * Notların ardına hep boş parsel ekleniyor. Ekim başlıktaki bir butonla değil,
+ * boş toprağa dokunarak yapılıyor.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -26,20 +26,20 @@ import type { Note } from '../types';
 
 const GRID_PADDING = spacing.md;
 /**
- * Tarla telefon ölçeğinde tasarlandı: parselin hedef ve azami kenarı sabittir.
- * Sütun sayısı genişlikten türetilir, artan yer parselleri şişirmek yerine
- * ızgaranın iki yanında boşluk olarak kalır. Aksi halde geniş bir tarayıcıda
- * tek bir parsel yarım ekranı kaplıyordu.
+ * Tarlayı telefon ölçüsüne göre tasarladım, parselin hedef ve en büyük kenarı
+ * sabit. Sütun sayısını genişlikten hesaplıyoruz, artan yer parselleri şişirmek
+ * yerine ızgaranın iki yanında boşluk olarak kalıyor. Yoksa geniş tarayıcıda
+ * tek parsel yarım ekranı kaplıyordu.
  */
 const TARGET_TILE = 150;
 const MAX_TILE = 200;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 5;
-/** Tarlanın sonunda kaç sıra boş toprak dursun — ekim buradan yapılıyor. */
+/** Tarlanın sonunda kaç sıra boş toprak kalsın. Ekim buradan yapılıyor. */
 const SPARE_ROWS = 1;
 
 /**
- * Izgaranın bir hücresi. Boş parseller veriden değil düzenden gelir, o yüzden
+ * Izgaranın bir hücresi. Boş parseller veriden değil düzenden geldiği için
  * nota değil hücreye bakan bir tip kullanıyoruz.
  */
 type Cell =
@@ -69,10 +69,10 @@ export function FarmView({
 }: Props) {
   const { timeSkip, dismissTimeSkip, notifyScheduleChanged } = useFarm();
   /**
-   * Izgara kendi kabının genişliğini ölçer, pencereninkini değil: kenar
-   * çubuğu açıkken tarla pencereden ~270px dar bir alanda yaşıyor ve
-   * `useWindowDimensions` ile hesaplanan sütun sayısı son parseli ekranın
-   * dışına taşırıyordu.
+   * Izgara pencereyi değil kendi kabının genişliğini ölçüyor. Kenar çubuğu
+   * açıkken tarlaya pencereden ~270px dar bir alan kalıyor ve
+   * useWindowDimensions ile hesaplanan sütun sayısı son parseli ekran dışına
+   * taşırıyordu.
    */
   const [width, setWidth] = useState(0);
 
@@ -82,14 +82,14 @@ export function FarmView({
       MAX_COLUMNS,
       Math.max(MIN_COLUMNS, Math.floor(usable / TARGET_TILE)),
     );
-    // Parseller arasındaki boşluk da genişlikten düşülmeli; yoksa son sütun
-    // taşıyor. Kesirli kenar bırakmamak için aşağı yuvarlanıyor.
+    // Parseller arasındaki boşluğu da düşmek lazım, yoksa son sütun taşıyor.
+    // Kesirli kenar kalmasın diye aşağı yuvarlıyoruz.
     const totalGapSpace = (cols - 1) * spacing.sm;
     const tile = Math.floor(Math.min((usable - totalGapSpace) / cols, MAX_TILE));
     return { columns: cols, tileSize: tile, fieldWidth: usable };
   }, [width]);
 
-  /** Aşama sayaçları DB'deki `status`tan değil, türetilmiş aşamadan gelir. */
+  /** Sayaçlar DB'deki status'tan değil, hesaplanan aşamadan geliyor. */
   const counts = useMemo(() => {
     const base: Record<VisualStage, number> = {
       planted: 0,
@@ -104,8 +104,8 @@ export function FarmView({
   }, [notes, now, labor]);
 
   /**
-   * Notlar + boş parseller. Son sıra tamamlanır ve üstüne bir sıra daha
-   * eklenir; böylece ekilecek boş toprak hiç bitmez.
+   * Notlar + boş parseller. Son sırayı tamamlayıp üstüne bir sıra daha
+   * ekliyoruz ki ekilecek boş toprak hiç bitmesin.
    */
   const cells = useMemo(() => {
     const list: Cell[] = notes.map((note) => ({
@@ -122,7 +122,7 @@ export function FarmView({
     return list;
   }, [notes, columns]);
 
-  /** Geliştirme aracı: tarlayı bir gün yaşlandırıp simülasyonu zorla çalıştırır. */
+  /** Dev aracı: tarlayı bir gün yaşlandırıp simülasyonu zorla çalıştırıyor. */
   const handleAgeField = useCallback(async () => {
     await devAgeNotes(DAY);
     await runTimeSkip({ force: true });
@@ -148,7 +148,7 @@ export function FarmView({
     [now, labor, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
   );
 
-  // Ölçüm gelmeden ızgarayı çizmek bir kare yanlış sütun sayısı demek.
+  // Ölçüm gelmeden çizersek bir kare yanlış sütun sayısıyla çiziyoruz.
   if (width === 0) {
     return (
       <View
@@ -231,9 +231,8 @@ export function FarmView({
 }
 
 /**
- * Aşama sayacı. Kağıt zeminde kenarlık değil, solundaki renk noktası
- * aşamayı söylüyor — dört çip yan yana dizildiğinde dört ayrı kutu yerine
- * tek bir satır gibi okunuyor.
+ * Aşama sayacı. Kenarlık yerine solundaki renk noktası aşamayı söylüyor.
+ * Dört çip yan yana gelince dört ayrı kutu yerine tek satır gibi duruyor.
  */
 function StatChip({ stage, count }: { stage: VisualStage; count: number }) {
   const visual = STAGE_VISUALS[stage];
@@ -249,10 +248,8 @@ function StatChip({ stage, count }: { stage: VisualStage; count: number }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.ground },
-  /**
-   * Başlık şeridi kağıttan bir tık yukarıda: dolgu farkı değil, altındaki
-   * saç teli çizgi ayırıyor. Kalın kenarlık artık yalnızca parsellerde.
-   */
+  // Başlık şeridini altındaki ince çizgi ayırıyor, dolgu farkı değil.
+  // Kalın kenarlık artık sadece parsellerde.
   header: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
@@ -261,7 +258,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: borders.hairline,
     borderBottomColor: colors.rule,
   },
-  /** Zemin tam genişlikte kalır, içerik ızgarayla aynı hizaya oturur. */
+  /** Zemin tam genişlikte kalıyor, içerik ızgarayla aynı hizaya oturuyor. */
   headerInner: { width: '100%', alignSelf: 'center', gap: spacing.md },
   headerTitleBlock: { flex: 1, gap: 2 },
   title: { ...typography.display, color: colors.textPrimary },
@@ -276,7 +273,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: 2,
   },
-  /** Dokunulabilir her yüzeyin basış karşılığı aynı: zemin koyulaşır. */
+  /** Basılabilir her yüzeyde aynı geri bildirim: zemin koyulaşıyor. */
   pressedSurface: { backgroundColor: colors.rule },
   bannerTitle: { ...typography.heading, color: colors.textPrimary },
   bannerBody: { ...typography.caption, color: colors.textMuted },
@@ -296,7 +293,7 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   list: { flex: 1, width: '100%', alignSelf: 'center' },
-  /** Parseller ayrı kartlar: aralarındaki boşluk ızgarayı nefes aldırır. */
+  /** Parseller ayrı kartlar, aradaki boşluk ızgarayı ferahlatıyor. */
   grid: { paddingBottom: spacing.xxl, gap: spacing.sm },
   column: { justifyContent: 'flex-start', gap: spacing.sm },
 });

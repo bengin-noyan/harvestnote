@@ -1,7 +1,5 @@
-/**
- * Kısa ipucu balonu. Ot basmış karta dokunulduğunda "neden açılmadığını"
- * anlatmak için kullanılıyor — sessizce reddetmek kullanıcıyı yanıltıyordu.
- */
+// Kısa ipucu balonu. Otlu karta dokununca notun neden açılmadığını
+// söylüyor. Sessizce reddedince kullanıcı bug sanıyordu.
 import React, { useEffect } from 'react';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
@@ -33,8 +31,8 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
       });
       return;
     }
-    // Tek bir dizi olarak kurulmali: iki ayri atama yapilirsa ikincisi
-    // birincisini aninda iptal eder ve balon hic gorunmez.
+    // withSequence sart. Iki ayri atama yapinca ikincisi birincisini aninda
+    // iptal ediyor ve balon hic gorunmuyor.
     progress.value = withSequence(
       withTiming(1, { duration: durations.base, easing: easings.out }),
       withDelay(
@@ -62,10 +60,7 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
 
 const styles = StyleSheet.create({
   noHit: { pointerEvents: 'none' },
-  /**
-   * Balon koyu kaldı: aydınlık zeminde en yüksek kontrastı o veriyor ve
-   * geçici bir bildirim olduğu anlaşılıyor. Kenarlık gereksizleşti.
-   */
+  // Balon koyu kaldı, açık zeminde en çok o ayrışıyor. Kenarlığa gerek yok.
   toast: {
     position: 'absolute',
     left: spacing.lg,

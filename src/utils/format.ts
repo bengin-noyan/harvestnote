@@ -1,4 +1,4 @@
-/** Tarih/süre biçimlendirme yardımcıları (TR). */
+// Tarih ve süre yazdırma yardımcıları.
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
@@ -21,7 +21,7 @@ export function formatRelative(ms: number, now: number = Date.now()): string {
   return `${Math.floor(diff / DAY)} gün önce`;
 }
 
-/** "4 saat", "2 gün" — kalan süre için. */
+/** Kalan süre için: "4 saat", "2 gün". */
 export function formatDuration(ms: number): string {
   if (ms <= 0) return 'şimdi';
   if (ms < HOUR) return `${Math.max(1, Math.round(ms / MINUTE))} dk`;

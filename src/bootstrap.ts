@@ -1,7 +1,5 @@
-/**
- * Açılış akışı: veritabanını hazırla -> zamanı simüle et -> tarla özetini
- * çıkar. Sıra önemlidir; time-skip migration'lar bitmeden çalışamaz.
- */
+// Açılış sırası: db'yi hazırla, geçen zamanı simüle et, tarla özetini al.
+// Sıra önemli, migration bitmeden time-skip çalışmıyor.
 import { initDatabase } from './db/database';
 import { getFieldStats, type FieldStats } from './db/repositories/notes';
 import { runTimeSkip, type RunTimeSkipOptions } from './game/timeSkip';
@@ -23,14 +21,14 @@ export async function bootstrapApp(
   const timeSkip = await runTimeSkip(options);
   const stats = await getFieldStats();
 
-  // Bildirim kurulumu açılışı bloklamamalı: kanal/handler kurulamazsa bile
-  // uygulama çalışır, yalnızca hatırlatma gelmez.
+  // Bildirim kurulumu patlarsa uygulama yine de açılsın, sadece hatırlatma
+  // gelmez.
   try {
     await configureNotifications();
   } catch (error) {
     if (__DEV__) console.warn('[bootstrap] bildirimler kurulamadi', error);
   }
-  // syncWeedReminders kendi hatalarını zaten yutuyor.
+  // syncWeedReminders hatayı içeride yutuyor, ayrıca try'a gerek yok.
   await syncWeedReminders(timeSkip.now);
 
   return { timeSkip, stats };

@@ -1,14 +1,12 @@
 /**
- * Uygulamanın kök veri sağlayıcısı.
+ * Uygulamanın kök provider'ı. Yaptıkları:
  *
- * Sorumlulukları:
- *  1. Açılışta DB'yi hazırlamak ve time-skip'i çalıştırmak (bootstrapApp).
- *  2. Uygulama arka plandan öne döndüğünde simülasyonu tekrar çalıştırmak —
- *     mobilde uygulama günlerce "açık" kalabilir; sadece cold start'a
- *     güvenmek yabani otların hiç basmaması demek olurdu.
+ *  1. Açılışta DB'yi hazırlayıp time-skip'i çalıştırmak (bootstrapApp).
+ *  2. Uygulama arka plandan dönünce simülasyonu tekrar çalıştırmak. Mobilde
+ *     uygulama günlerce açık kalabiliyor, sadece cold start'a güvenirsek
+ *     otlar hiç basmıyor.
  *  3. Karşılama ekranının okuyacağı son time-skip özetini tutmak.
- *  4. Yazma sonrası ekranların listelerini tazelemesi için `revision`
- *     sayacını yürütmek.
+ *  4. Ekranlar listelerini tazelesin diye `revision` sayacını yürütmek.
  */
 import React, {
   createContext,
@@ -39,27 +37,27 @@ export interface FarmContextValue {
   timeSkip: TimeSkipResult | null;
   stats: FieldStats;
   /**
-   * Tarla verisi her değiştiğinde artan sayaç. Ekranlar buna abone olarak
-   * listelerini tazeler — global bir store kurmadan tek yönlü akış.
+   * Tarla verisi değiştikçe artan sayaç. Ekranlar bunu dinleyip listelerini
+   * tazeliyor. Store kurmadan tek yönlü akış.
    */
   revision: number;
   /**
-   * Bir yazma sonrası çağrılır: sayaçları tazeler, ekranları tetikler ve ot
-   * hatırlatmalarını DB ile eşitler.
+   * Yazmadan sonra çağrılıyor: sayaçları tazeliyor, ekranları tetikliyor ve
+   * ot hatırlatmalarını DB ile eşitliyor.
    *
-   * Notun *zamanlamasına* dokunan her şey bunu kullanmalı: ekim, ot temizleme,
-   * hasat, silme, düzenleme (düzenleme `last_tended_at`'i tazeliyor) ve zaman
-   * atlaması. Şüphedeysen bunu seç — fazladan eşitleme ucuz (debounce'lu),
+   * Notun zamanlamasına dokunan her şey bunu kullanmalı: ekim, ot temizleme,
+   * hasat, silme, düzenleme (düzenleme last_tended_at'i tazeliyor) ve zaman
+   * atlaması. Emin değilsen bunu seç. Fazladan eşitleme ucuz (debounce'lu),
    * eksik eşitleme "hasat edildi ama bildirimi hâlâ kurulu" demek.
    */
   notifyScheduleChanged: () => void;
   /**
-   * Hiçbir notun ot saatini kaydırmayan yazmalar için: yalnızca sayaçları ve
-   * listeleri tazeler, bildirim katmanına hiç dokunmaz.
+   * Hiçbir notun ot saatini kaydırmayan yazmalar için. Sadece sayaçları ve
+   * listeleri tazeliyor, bildirim tarafına hiç dokunmuyor.
    *
-   * Bugünkü tek kullanıcısı kilerden ürün atmak. Asıl gerekçesi Faz 1: blok
-   * editörü otomatik kaydetmeye başladığında içerik yazmalarının bildirim
-   * yolunu tetiklememesi gerekiyor.
+   * Şu an tek kullanan yer kilerden ürün atmak. Asıl sebebi editör: otomatik
+   * kaydetme sürekli içerik yazıyor ve bunların bildirim yolunu tetiklememesi
+   * lazım.
    */
   notifyContentChanged: () => void;
   /** Tarla sayaçlarını tazeler (ekim/hasat sonrası çağrılır). */
@@ -81,9 +79,9 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
   const [stats, setStats] = useState<FieldStats>(EMPTY_STATS);
   const [attempt, setAttempt] = useState(0);
   const [revision, setRevision] = useState(0);
-  // Ayrı sayaç: hangi yazmaların bildirim katmanını ilgilendirdiğini ekranlar
-  // değil, çağrılan kanal söylüyor. `revision` her ikisinde de artar, böylece
-  // listeler her değişiklikte tazelenmeye devam eder.
+  // Ayrı sayaç tutuyoruz. Hangi yazmanın bildirimi ilgilendirdiğini ekranlar
+  // değil, çağrılan kanal belirliyor. `revision` ikisinde de arttığı için
+  // listeler her değişiklikte tazelenmeye devam ediyor.
   const [scheduleRevision, setScheduleRevision] = useState(0);
 
   const refreshStats = useCallback(async () => {
@@ -107,16 +105,16 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
     });
   }, [revision, status, refreshStats]);
 
-  // Zamanlamaya dokunan bir değişiklik oldu: kurulu bildirimleri DB'den
-  // yeniden türet. Tek noktadan türetmek, "hasat edildi ama bildirimi hâlâ
-  // kurulu" gibi kaçakları imkânsız kılıyor. İstek debounce'lu — arka arkaya
-  // yazmalar tek eşitlemede birleşir (bkz. requestReminderSync).
+  // Zamanlamaya dokunan bir değişiklik olmuş, kurulu bildirimleri DB'den
+  // yeniden çıkarıyoruz. Tek yerden türetince "hasat edildi ama bildirimi hâlâ
+  // kurulu" durumu oluşmuyor. İstek debounce'lu, arka arkaya yazmalar tek
+  // eşitlemede birleşiyor (bkz. requestReminderSync).
   useEffect(() => {
     if (status !== 'ready' || scheduleRevision === 0) return;
     requestReminderSync();
   }, [scheduleRevision, status]);
 
-  // --- Cold start -------------------------------------------------------
+  // --- Açılış -----------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
 
@@ -153,10 +151,10 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
         const previous = appState.current;
         appState.current = next;
 
-        // Arka plana geçiş: bekleyen eşitleme burada bitmeli. Uygulama arka
-        // plandayken JS zamanlayıcıları askıya alınabiliyor, yani debounce hiç
-        // çalışmayabilir — üstelik bildirimlerin doğru olmasının asıl önemli
-        // olduğu an tam da bu.
+        // Arka plana geçiyoruz, bekleyen eşitlemeyi burada bitirelim. Arka
+        // planda JS timer'ları askıya alınabiliyor, yani debounce hiç
+        // çalışmayabilir. Üstelik bildirimlerin doğru olması en çok bu an
+        // önemli.
         if (previous === 'active' && next.match(/inactive|background/)) {
           void flushReminderSync();
           return;
@@ -172,11 +170,11 @@ export function FarmProvider({ children }: { children: React.ReactNode }) {
             if (!result.didRun) return;
             setTimeSkip(result);
             await refreshStats();
-            // Statüler değişti: hatırlatmalar da yeniden türetilmeli.
+            // Statüler değişti, hatırlatmaları da yeniden kuralım.
             notifyScheduleChanged();
           })
           .catch((err: unknown) => {
-            // Foreground simülasyonu en iyi çaba: hata açılışı bozmasın.
+            // Buradaki simülasyon best-effort, hata uygulamayı bozmasın.
             if (__DEV__) console.warn('[farm] time-skip basarisiz', err);
           });
       },

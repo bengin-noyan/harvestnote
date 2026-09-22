@@ -1,36 +1,34 @@
 /**
- * Hareket dili.
+ * Animasyon değerleri tek yerde dursun.
  *
- * Uygulamadaki her geçiş — kart filizlenmesi, panel açılışı, ipucu balonu —
- * aynı iki eğriden ve aynı süre ölçeğinden beslenir. Değerler bileşenlerin
- * içine dağıldığında her ekran kendi ritmini uyduruyordu; burada tek yerde
- * durunca uygulama tek elden çıkmış gibi hissettiriyor.
+ * Süreleri bileşenlerin içine dağıtınca her ekran farklı hızda oluyordu,
+ * hepsini buraya topladım.
  *
- * Tokenlar worklet'lerin içinden de okunuyor, o yüzden hepsi düz veri ya da
- * Reanimated'in kendi easing nesneleri.
+ * Dikkat: bunlar worklet içinden de okunuyor, o yüzden hepsi düz obje ya da
+ * Reanimated'in kendi easing'i.
  */
 import { Easing } from 'react-native-reanimated';
 
-/** Süre ölçeği (ms). Aradaki oran 1.5x — basamaklar birbirinden ayırt edilir. */
+/** Süreler (ms). Aralarında 1.5x fark var, gözle ayırt ediliyor. */
 export const durations = {
-  /** Anlık geri bildirim: basış, sallanma adımı. */
+  /** Basış, sallanma gibi anlık şeyler. */
   fast: 140,
-  /** Varsayılan: katman değişimi, giriş/çıkış. */
+  /** Varsayılan. Giriş/çıkış, katman değişimi. */
   base: 220,
-  /** Yer değiştiren büyük yüzeyler: panel, hasat. */
+  /** Panel açılması, hasat gibi büyük hareketler. */
   slow: 300,
 } as const;
 
 export const easings = {
-  /** Giren ve yerleşen her şey: hızlı başlar, yumuşak durur. */
+  /** Giren şeyler için. Hızlı başlıyor, yumuşak duruyor. */
   out: Easing.bezier(0.22, 1, 0.36, 1),
-  /** Çıkan / kaybolan: ekranı oyalamadan terk eder. */
+  /** Çıkanlar için, oyalanmasın. */
   in: Easing.bezier(0.4, 0, 1, 1),
 } as const;
 
 /**
- * Yaylar. `enter` biraz zıplar (canlılık), `settle` zıplamaz — parmağın
- * bıraktığı yerden geri dönen bir şey salınırsa hatalı gibi görünüyor.
+ * Yaylar. `enter` hafif zıplıyor, `settle` zıplamıyor. Parmağın bıraktığı
+ * yerden geri dönen bir şey salınınca bug gibi duruyor.
  */
 export const springs = {
   enter: { damping: 14, stiffness: 170 },

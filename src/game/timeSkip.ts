@@ -1,18 +1,15 @@
 /**
- * Zaman Atlaması (Time Skip)
+ * Zaman atlaması.
  *
- * Arka planda çalışan bir servis YOK. Uygulama her açıldığında
- * `settings.last_opened_at` ile şimdi arasındaki fark ölçülür ve tarlada
- * "o sürede olması gerekenler" tek seferde uygulanır. Pil tüketimi sıfır,
- * sonuç aynı.
+ * Arka planda çalışan bir servis yok. Uygulama her açıldığında
+ * settings.last_opened_at ile şimdi arasındaki farka bakıp o sürede olması
+ * gerekenleri tek seferde uyguluyoruz. Pil yakmıyor, sonuç aynı.
  *
  * Kurallar:
- *  - Bir not son bakımından (`last_tended_at`) itibaren `weedThresholdMs`
- *    kadar dokunulmadan kaldıysa 'weedy' olur.
- *  - 'planted' bir not, türüne göre belirlenen büyüme süresini doldurduysa
- *    'growing' olur.
- *  - Yabani ot büyümeyi ezer: iki koşul da sağlanıyorsa sonuç 'weedy'.
- *  - Hasat edilmiş notlara (harvested_at != NULL) dokunulmaz.
+ *  - last_tended_at üzerinden weedThresholdMs geçtiyse not 'weedy' olur.
+ *  - 'planted' not türüne göre büyüme süresini doldurduysa 'growing' olur.
+ *  - Ot büyümeyi eziyor, ikisi de olduysa sonuç 'weedy'.
+ *  - Hasat edilmiş notlara (harvested_at dolu) dokunmuyoruz.
  */
 import { getDatabase, withWriteTransaction } from '../db/database';
 import { toNoteStatus, toSeedType } from '../db/mappers';
@@ -25,25 +22,22 @@ import type { TimeSkipResult } from '../types';
 import { DAY, DEFAULT_GROWTH_RULES, type GrowthRules } from './config';
 import { computeSkipPlan, type SimulatableNote } from './growth';
 
-// Kuralların saf hesabı growth.ts'te; burası yalnızca I/O ve zamanlama.
+// Asıl hesap growth.ts'te, burada sadece DB ve zamanlama işi var.
 export { computeSkipPlan, resolveStatus } from './growth';
 export type { SimulatableNote, SkipPlan } from './growth';
 
 export interface RunTimeSkipOptions {
-  /** Test/simülasyon için "şimdi"yi enjekte et. */
+  /** Test ederken "şimdi"yi dışarıdan verebilmek için. */
   now?: number;
   rules?: GrowthRules;
-  /**
-   * Eşik kontrolünü atlayıp simülasyonu zorla çalıştır (geliştirici menüsü,
-   * "1 gün ileri sar" gibi hata ayıklama araçları için).
-   */
+  /** Eşiğe bakmadan çalıştır. Dev menüsündeki "1 gün ileri sar" için. */
   force?: boolean;
 }
 
 /**
- * Açılışta bir kez çağrılır. Geçen süreyi ölçer, tarlayı günceller ve
- * `last_opened_at`'i tazeler. Dönen özet UI'da "3 gün yoktun, 2 notunu ot
- * bastı" tarzı bir karşılama ekranı için yeterlidir.
+ * Açılışta bir kez çağrılıyor. Geçen süreyi ölçüyor, tarlayı güncelliyor,
+ * last_opened_at'i tazeliyor. Dönen özetle "3 gün yoktun, 2 notunu ot bastı"
+ * ekranını çizebiliyoruz.
  */
 export async function runTimeSkip(
   options: RunTimeSkipOptions = {},
@@ -65,8 +59,8 @@ export async function runTimeSkip(
     now,
   };
 
-  // Cihaz saati geri alınmış: damgayı düzelt, tarlaya dokunma. Aksi halde
-  // kullanıcı saati ileri/geri oynatarak durumları bozabilir.
+  // Cihaz saati geri alınmış. Sadece damgayı düzeltip tarlaya dokunmuyoruz,
+  // yoksa saatle oynayarak statüleri bozmak mümkün oluyor.
   if (base.clockWentBackwards) {
     await setLastOpenedAt(now);
     return base;
@@ -75,8 +69,8 @@ export async function runTimeSkip(
   // İlk açılışta simüle edilecek geçmiş yok.
   if (created) return base;
 
-  // Uygulamayı saniyeler içinde tekrar açmak yazma tetiklemesin. Damgayı da
-  // güncellemiyoruz ki kısa aralıklar birikip eşiği doğal yoldan aşsın.
+  // Uygulamayı saniyeler içinde tekrar açınca boşuna yazma yapmayalım.
+  // Damgayı da güncellemiyoruz ki kısa aralıklar birikip eşiği geçebilsin.
   if (!options.force && elapsedMs < rules.minSkipMs) return base;
 
   const db = await getDatabase();
@@ -102,10 +96,10 @@ export async function runTimeSkip(
 
   const plan = computeSkipPlan(notes, now, rules);
 
-  // Statü güncellemeleri ve açılış damgası tek transaction: yarıda kalırsa
-  // last_opened_at eski kalır ve simülasyon sonraki açılışta tekrar dener.
-  // Yazmalar `txn` üzerinden gider; exclusive blok içinde `db` kullanmak
-  // kendi kilidini bekleyeceği için kilitlenme demektir.
+  // Statüler ve açılış damgası tek transaction'da. Yarıda kalırsa
+  // last_opened_at eski kalıyor, simülasyon sonraki açılışta tekrar deniyor.
+  // Yazmalar txn üzerinden gidiyor, burada `db` kullanmak kendi kilidini
+  // beklediği için donduruyor.
   await withWriteTransaction(db, async (txn) => {
     await setNoteStatuses(plan.grownNoteIds, 'growing', txn);
     await setNoteStatuses(plan.weededNoteIds, 'weedy', txn);

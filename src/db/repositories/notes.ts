@@ -1,6 +1,4 @@
-/**
- * Notlar (tohumlar) repository'si — tarladaki her şey buradan geçer.
- */
+// Notlar (tohumlar) repository'si. Tarladaki her şey buradan geçiyor.
 import { DEFAULT_SEED_TYPE } from '../../game/config';
 import type {
   CreateNoteInput,
@@ -23,7 +21,7 @@ import { insertHarvestRecord } from './inventory';
 /* Yazma                                                               */
 /* ------------------------------------------------------------------ */
 
-/** Yeni tohum ek. Not her zaman 'planted' olarak başlar. */
+/** Yeni tohum ekiyor. Not hep 'planted' başlıyor. */
 export async function plantSeed(input: CreateNoteInput): Promise<Note> {
   const db = await getDatabase();
   const now = input.created_at ?? Date.now();
@@ -44,9 +42,9 @@ export async function plantSeed(input: CreateNoteInput): Promise<Note> {
 }
 
 /**
- * Not içeriğini günceller ve `last_tended_at`'i tazeler — düzenlemek de bir
- * bakımdır, aksi halde yeni düzenlenen bir not bir sonraki açılışta hemen
- * 'weedy' olurdu. Statüye dokunmaz: otu temizlemek ayrı bir jest (`tendNote`).
+ * Notu günceller ve last_tended_at'i tazeler. Düzenlemek de bakım sayılıyor,
+ * yoksa yeni düzenlenen not bir sonraki açılışta hemen 'weedy' oluyor.
+ * Statüye dokunmuyor, ot temizleme ayrı bir jest (tendNote).
  */
 export async function updateNote(
   id: number,
@@ -86,8 +84,8 @@ export async function updateNote(
 }
 
 /**
- * Ot temizleme (swipe jesti). 'weedy' notu tekrar 'growing' yapar ve bakım
- * sayacını sıfırlar.
+ * Ot temizleme (kaydırma jesti). 'weedy' notu tekrar 'growing' yapıyor ve
+ * bakım sayacını sıfırlıyor.
  */
 export async function tendNote(
   id: number,
@@ -106,8 +104,8 @@ export async function tendNote(
 
 /**
  * Time-skip'in kullandığı toplu statü güncellemesi.
- * `executor` için bkz. settings.setLastOpenedAt — exclusive transaction
- * içinden çağrılırken transaction nesnesi geçilmeli.
+ * executor için bkz. settings.setLastOpenedAt. Exclusive transaction içinden
+ * çağırıyorsan transaction nesnesini geçmen lazım.
  */
 export async function setNoteStatuses(
   ids: number[],
@@ -137,9 +135,9 @@ export interface HarvestResult {
 }
 
 /**
- * Hasat: not SİLİNMEZ. `harvested_at` damgalanır (tarladan çıkar) ve kilere
- * bir kayıt düşer. İki yazma tek transaction'da: uygulama arada kapanırsa
- * "hasat edilmiş ama kilerde yok" durumu oluşamaz.
+ * Hasat. Notu silmiyoruz, harvested_at'i damgalayıp (tarladan çıkıyor) kilere
+ * kayıt atıyoruz. İki yazma tek transaction'da, yoksa uygulama arada kapanınca
+ * "hasat edilmiş ama kilerde yok" durumu çıkıyor.
  */
 export async function harvestNote(
   id: number,
@@ -150,8 +148,8 @@ export async function harvestNote(
   let quality: HarvestQuality = 'normal';
   let harvested = false;
 
-  // Iki hizli swipe ayni notu ayni anda hasat etmeye calisamasin.
-  // Blok icindeki her sorgu `txn` uzerinden gitmeli (bkz. setNoteStatuses).
+  // Iki hizli kaydirma ayni notu ayni anda hasat etmeye calismasin.
+  // Blok icindeki sorgular `txn` uzerinden gitmeli (bkz. setNoteStatuses).
   await withWriteTransaction(db, async (txn) => {
     const row = await txn.getFirstAsync<NoteRow>(
       'SELECT * FROM notes WHERE id = ? AND harvested_at IS NULL',
@@ -184,8 +182,8 @@ export async function harvestNote(
 }
 
 /**
- * Kalıcı silme. Kilerdeki kayıt korunur, sadece `original_note_id` NULL'a
- * düşer (ON DELETE SET NULL) — geçmiş hasat sayısı bozulmaz.
+ * Kalıcı silme. Kilerdeki kayıt duruyor, sadece original_note_id NULL oluyor
+ * (ON DELETE SET NULL). Yani geçmiş hasat sayısı bozulmuyor.
  */
 export async function deleteNote(id: number): Promise<boolean> {
   const db = await getDatabase();
@@ -194,12 +192,12 @@ export async function deleteNote(id: number): Promise<boolean> {
 }
 
 /**
- * SADECE GELİŞTİRME. Aktif notların yaşını `ms` kadar ileri alır (zaman
- * damgalarını geriye çeker).
+ * SADECE GELİŞTİRME İÇİN. Aktif notları ms kadar yaşlandırıyor (zaman
+ * damgalarını geri çekiyor).
  *
- * Gerekçesi: en hızlı tohum bile 4 saatte filizleniyor, ot 48 saatte basıyor.
- * Bu eşikler ürün için doğru ama geliştirirken 'growing' / 'harvestable' /
- * 'weedy' aşamalarını ve jestleri elle denemenin başka yolu yok.
+ * En hızlı tohum bile 4 saatte filizleniyor, ot 48 saatte basıyor. Bu süreler
+ * ürün için doğru ama geliştirirken 'growing' / 'harvestable' / 'weedy'
+ * aşamalarını elle denemenin başka yolu yok.
  */
 export async function devAgeNotes(ms: number): Promise<void> {
   if (!__DEV__) throw new Error('devAgeNotes yalnizca gelistirme derlemesinde');
@@ -257,7 +255,7 @@ export interface FieldStats {
   total: number;
 }
 
-/** Tek sorguda statü dağılımı — açılış özeti / rozetler için. */
+/** Tek sorguda statü dağılımı. Açılış özeti ve rozetler için. */
 export async function getFieldStats(): Promise<FieldStats> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ status: string; count: number }>(
@@ -308,7 +306,7 @@ function buildNoteQuery(query: NoteQuery): {
   }
 
   if (query.search?.trim()) {
-    // LIKE jokerlerini kaçır ki kullanıcının yazdığı % ve _ literal kalsın.
+    // LIKE jokerlerini kaçırıyoruz ki kullanıcının yazdığı % ve _ düz kalsın.
     const term = query.search.trim().replace(/[%_\\]/g, '\\$&');
     const like = `%${term}%`;
     where.push(
@@ -323,7 +321,7 @@ function buildNoteQuery(query: NoteQuery): {
   };
 }
 
-/** LIMIT/OFFSET ekler ve parametreleri aynı diziye yazar (sıra önemli). */
+/** LIMIT/OFFSET ekliyor, parametreleri de aynı diziye yazıyor (sıra önemli). */
 function limitClause(query: NoteQuery, params: (string | number)[]): string {
   if (query.limit == null) return '';
   params.push(query.limit);

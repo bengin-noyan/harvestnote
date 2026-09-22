@@ -1,14 +1,14 @@
 /**
- * Tek bir bloğun satırı: tutamak + önek (kutu / madde imi / numara) + metin.
+ * Bir bloğun satırı: tutamak + önek (kutu / madde imi / numara) + metin.
  *
- * Satır *aptal*: kendi metnini bilir, kendi kaydını bilmez. Enter, Backspace
- * ve `/` yorumlaması BlockEditor'da — o kararlar komşu bloklara bakmayı
- * gerektiriyor, satırın komşusu yok.
+ * Satır sadece kendi metnini biliyor, kaydetmeyi bilmiyor. Enter, Backspace ve
+ * `/` kararları BlockEditor'da duruyor çünkü komşu bloklara bakmak gerekiyor,
+ * satırın komşusundan haberi yok.
  *
- * Tür menüsü neden uzun basışla değil tutamakla açılıyor: RN'de `TextInput`
- * `onLongPress` almıyor, dokunuşu metin seçimi için kendi yutuyor. Sarmalayan
- * bir `Pressable` de aynı nedenle güvenilmez. Tutamak ayrıca "bloğu sil"in
- * garantili yolu — Android'de boş kutuda Backspace tetiklenmeyebiliyor.
+ * Tür menüsü neden uzun basışta değil de tutamakta: RN'de TextInput
+ * onLongPress almıyor, dokunuşu metin seçimi için kendi yutuyor. Etrafına
+ * Pressable koymak da aynı sebeple çalışmıyor. Tutamak ayrıca "bloğu sil"in
+ * garantili yolu, Android'de boş kutuda Backspace tetiklenmeyebiliyor.
  */
 import React, { useState } from 'react';
 import {
@@ -31,9 +31,9 @@ import { BLOCK_META } from './blockMeta';
 
 interface Props {
   block: NoteBlock;
-  /** `numbered` bloklarda gösterilecek sıra; diğerlerinde kullanılmaz. */
+  /** numbered bloklarda gösterilen sıra. Diğerlerinde kullanılmıyor. */
   ordinal: number;
-  /** Bu blok yazılıyorsa tutamak koyulaşır. */
+  /** Bu blokta yazılıyorsa tutamak koyulaşıyor. */
   active: boolean;
   registerRef: (id: number, ref: TextInput | null) => void;
   onChangeText: (text: string) => void;
@@ -64,13 +64,12 @@ export function BlockRow({
   const done = block.type === 'todo' && block.checked;
 
   /**
-   * Kutu içeriğine sarılsın.
+   * Kutu içeriği kadar olsun.
    *
-   * Çok satırlı `TextInput` web'de `<textarea>` oluyor ve textarea kendi
-   * içeriğine göre büyümüyor — varsayılan iki satırlık yüksekliğinde
-   * kalıyordu, yani her blok arasında bir satırlık ölü boşluk vardı.
-   * `onContentSizeChange` iki platformda da ölçüyü veriyor; yüksekliği
-   * oradan alıyoruz.
+   * Çok satırlı TextInput web'de <textarea> oluyor ve textarea içeriğine göre
+   * büyümüyor, varsayılan iki satır yüksekliğinde kalıyordu. Yani her blok
+   * arasında bir satır boşluk vardı. onContentSizeChange iki platformda da
+   * ölçüyü veriyor, yüksekliği oradan alıyoruz.
    */
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const handleContentSize = (
@@ -132,15 +131,15 @@ export function BlockRow({
         ]}
         multiline
         /**
-         * Çok satırlı TextInput kendi kaydırmasını açtığında Android'de
-         * ebeveyn ScrollView ile çakışıyor ve blok sabit yükseklikte kalıyor.
-         * Kapatınca kutu içeriği kadar uzuyor — istediğimiz de bu.
+         * Çok satırlı TextInput kendi scroll'unu açınca Android'de üstteki
+         * ScrollView ile çakışıyor ve blok sabit yükseklikte kalıyor.
+         * Kapatınca kutu içerik kadar uzuyor, istediğimiz de bu.
          */
         scrollEnabled={false}
         textAlignVertical="top"
         autoCapitalize={block.type === 'code' ? 'none' : 'sentences'}
         autoCorrect={block.type !== 'code'}
-        /** Enter satır sonu üretsin: bölme kararını editör veriyor. */
+        /** Enter satır sonu bıraksın, bölme kararını editör veriyor. */
         blurOnSubmit={false}
         accessibilityLabel={`${meta.label} bloğu`}
       />
@@ -163,7 +162,7 @@ function Prefix({
     return (
       <Pressable
         onPress={onToggleCheck}
-        /** Kutu 18px; dokunma hedefi parmak için genişletiliyor. */
+        /** Kutu 18px, parmak için dokunma alanını genişletiyoruz. */
         hitSlop={spacing.sm}
         style={styles.prefix}
         accessibilityRole="checkbox"
@@ -197,17 +196,17 @@ function Prefix({
 }
 
 /**
- * Web'de tarayıcı odaklanan her textarea'ya kendi siyah çerçevesini çiziyor;
- * belge yüzeyinde bu, yazdığın satırın etrafında bir kutu demek. Odak zaten
- * imleçle ve tutamağın koyulaşmasıyla belli oluyor.
+ * Web'de tarayıcı odaklanan textarea'ya kendi siyah çerçevesini çiziyor, yani
+ * yazdığın satırın etrafında kutu çıkıyor. Odak zaten imleçten ve tutamağın
+ * koyulaşmasından belli oluyor.
  *
- * `outlineStyle` RN'in tip tanımında yok ama react-native-web destekliyor.
+ * outlineStyle RN'in tiplerinde yok ama react-native-web destekliyor.
  */
 const WEB_INPUT_RESET = Platform.OS === 'web'
   ? ({ outlineStyle: 'none' } as unknown as TextStyle)
   : null;
 
-/** Tür başına metin görünümü. Ölçekler theme'den gelir. */
+/** Tür başına metin stili. Ölçekler theme'den geliyor. */
 const TEXT_STYLE: Record<BlockType, TextStyle> = {
   paragraph: { ...typography.bodyLarge, color: colors.textPrimary },
   heading: { ...typography.blockHeading, color: colors.textPrimary },
@@ -229,14 +228,14 @@ const TEXT_STYLE: Record<BlockType, TextStyle> = {
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start' },
-  /** Alıntı solundaki çizgiyle anlatılıyor; önek simgesi yok. */
+  /** Alıntıyı soldaki çizgi anlatıyor, ayrı bir önek simgesi yok. */
   quoteRow: {
     borderLeftWidth: borders.thick,
     borderLeftColor: colors.ruleStrong,
   },
   /**
-   * Tutamak her satırda yer kaplar ama silik durur: yerini ayırmasaydık
-   * odaklanınca bütün satır sağa kayardı.
+   * Tutamak her satırda yer kaplıyor ama soluk duruyor. Yerini ayırmasak
+   * odaklanınca bütün satır sağa kayıyor.
    */
   handle: {
     width: 18,
@@ -249,15 +248,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.xs,
     /**
-     * Android TextInput'un gizli varsayılan yatay dolgusu var; sıfırlanmazsa
-     * metin öneke göre kaymış duruyor.
+     * Android TextInput'un gizli bir varsayılan yatay padding'i var,
+     * sıfırlamazsak metin öneke göre kaymış duruyor.
      */
     paddingHorizontal: 0,
   },
   done: { color: colors.textMuted, textDecorationLine: 'line-through' },
   /**
-   * Önek metnin ilk satırıyla hizalanmalı. `bodyLarge` satır yüksekliği 26;
-   * üstteki 4px dolgu buna eklenince simge tam ortaya oturuyor.
+   * Önek metnin ilk satırıyla hizalanmalı. bodyLarge'ın satır yüksekliği 26,
+   * üstteki 4px padding'le birlikte simge tam ortaya oturuyor.
    */
   prefix: {
     width: 26,

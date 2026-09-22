@@ -1,18 +1,17 @@
 /**
- * Ot basmadan önce hatırlatma bildirimleri.
+ * Ot basmadan önce gönderilen hatırlatmalar.
  *
- * Mimari, uygulamanın geri kalanıyla aynı ilkeye dayanıyor: arka planda
- * çalışan hiçbir şey yok. Her notun ot bağlayacağı an `last_tended_at`'ten
- * deterministik olarak hesaplanabildiği için bildirimi bugünden işletim
- * sistemine kuruyoruz; uygulama kapalıyken bile OS onu tetikler.
+ * Burada da arka planda çalışan bir şey yok. Bir notun ne zaman ot bağlayacağı
+ * last_tended_at'ten hesaplanabildiği için bildirimi şimdiden işletim
+ * sistemine kuruyoruz, uygulama kapalıyken bile OS tetikliyor.
  *
- * Kimliklendirme: her not için sabit bir tanımlayıcı (`weed-<id>`) kullanılıyor.
- * Böylece bildirimi nota bağlamak için veritabanına yeni bir sütun (ve yeni bir
- * migration) eklemek gerekmedi; aynı tanımlayıcıyla tekrar kurmak mevcut
- * bildirimin yerine geçtiği için işlem idempotent.
+ * Her not için sabit bir identifier kullanıyoruz (`weed-<id>`). Böylece
+ * bildirimi nota bağlamak için yeni bir sütun ve migration gerekmedi. Aynı
+ * identifier ile tekrar kurmak eskisinin yerine geçiyor, yani kaç kere
+ * çağırsak da sonuç aynı.
  *
- * Not: Expo Go'da bildirim desteği sınırlıdır (özellikle Android). Gerçek
- * davranış için development build gerekir — bkz. README.
+ * Not: Expo Go'da bildirim desteği kısıtlı (özellikle Android). Gerçek davranış
+ * için development build lazım, bkz. README.
  */
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -36,7 +35,7 @@ const MIN_SCHEDULE_AHEAD_MS = 60_000;
 export const reminderIdFor = (noteId: number): string =>
   `${ID_PREFIX}${noteId}`;
 
-/** Bize ait bir tanımlayıcıysa not id'sini döndürür, değilse null. */
+/** Bizim identifier'ımızsa not id'sini döndürüyor, değilse null. */
 export function noteIdFromReminderId(identifier: string): number | null {
   if (!identifier.startsWith(ID_PREFIX)) return null;
   const id = Number(identifier.slice(ID_PREFIX.length));
@@ -59,8 +58,8 @@ export function reminderTimeFor(
 let configured = false;
 
 /**
- * Bildirim davranışını ve Android kanalını kurar. Açılışta bir kez çağrılır;
- * tekrar çağrılması zararsızdır.
+ * Bildirim davranışını ve Android kanalını kuruyor. Açılışta bir kez
+ * çağrılıyor, tekrar çağırmak zarar vermiyor.
  */
 export async function configureNotifications(): Promise<void> {
   if (configured) return;
@@ -76,7 +75,7 @@ export async function configureNotifications(): Promise<void> {
   });
 
   if (Platform.OS === 'android') {
-    // Android'de kanal olmadan kurulan bildirimler sessizce düşer.
+    // Android'de kanal açmadan kurduğun bildirim sessizce düşüyor.
     await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
       name: 'Yabani ot uyarıları',
       importance: Notifications.AndroidImportance.DEFAULT,
@@ -93,11 +92,10 @@ export async function configureNotifications(): Promise<void> {
 let permissionGranted: boolean | null = null;
 
 /**
- * İzni gerektiği ANDA ister — açılışta değil.
+ * İzni açılışta değil, gerektiği anda istiyoruz.
  *
- * Tarla boşken sorulacak bir şey yok; ilk tohum ekildiğinde sorulması hem
- * daha az rahatsız edici hem de kullanıcının izni bağlamıyla birlikte
- * görmesini sağlıyor.
+ * Tarla boşken sorulacak bir şey yok. İlk tohum ekilince sormak hem daha az
+ * rahatsız edici, hem de kullanıcı izni neden istediğimizi görüyor.
  */
 export async function ensureReminderPermission(): Promise<boolean> {
   if (permissionGranted !== null) return permissionGranted;
@@ -117,7 +115,7 @@ export async function ensureReminderPermission(): Promise<boolean> {
   return permissionGranted;
 }
 
-/** Ayarlardan izin sonradan değiştirilmiş olabilir; önbelleği sıfırlar. */
+/** İzin ayarlardan sonradan değişmiş olabilir, cache'i sıfırlıyor. */
 export function resetPermissionCache(): void {
   permissionGranted = null;
 }
@@ -134,10 +132,10 @@ export interface PlannedReminder {
 }
 
 /**
- * Hangi notlara hatırlatma kurulacağını hesaplar. Yan etkisi yok — bildirim
- * katmanından ve veritabanından bağımsız test edilebilsin diye ayrıldı.
+ * Hangi notlara hatırlatma kurulacağını hesaplıyor. Yan etkisi yok, bildirim
+ * katmanından ve DB'den bağımsız denenebilsin diye ayırdım.
  *
- * Elenenler: ot basmış notlar (uyarmak için geç kalındı) ve hatırlatma anı
+ * Elenenler: otu basmış notlar (uyarmak için geç kalınmış) ve hatırlatma anı
  * geçmişte ya da çok yakın olanlar.
  */
 export function planReminders(
@@ -179,13 +177,12 @@ const EMPTY_RESULT: ReminderSyncResult = {
 };
 
 /**
- * Kurulu bildirimleri veritabanının şu anki haliyle eşitler.
+ * Kurulu bildirimleri DB'nin şu anki haliyle eşitliyor.
  *
- * Tek bir eşitleme fonksiyonu var çünkü hatırlatmayı etkileyen olay çok:
- * ekim, düzenleme, ot temizleme, hasat, silme, zaman atlaması. Her birine
- * ayrı zamanlama/iptal çağrısı serpiştirmek yerine, her değişiklikten sonra
- * (FarmProvider'daki `revision`) tüm durum yeniden türetiliyor — kaçırılan
- * bir yol kalmıyor.
+ * Tek bir eşitleme fonksiyonu var çünkü hatırlatmayı etkileyen olay çok fazla:
+ * ekim, düzenleme, ot temizleme, hasat, silme, zaman atlaması. Her birine ayrı
+ * kur/iptal çağrısı dağıtmak yerine her değişiklikten sonra (FarmProvider'daki
+ * `revision`) durumu baştan hesaplıyoruz. Böylece atlanan bir yol kalmıyor.
  */
 export async function syncWeedReminders(
   now: number = Date.now(),
@@ -198,7 +195,7 @@ export async function syncWeedReminders(
       planReminders(notes, now, rules, lead).map((item) => [item.noteId, item]),
     );
 
-    // Artık geçerli olmayanları (hasat edilmiş, silinmiş, ot basmış) kaldır.
+    // Geçerliliği kalmayanları temizliyoruz (hasat edilmiş, silinmiş, otlu).
     const existing = await Notifications.getAllScheduledNotificationsAsync();
     let cancelled = 0;
     for (const request of existing) {
@@ -216,8 +213,8 @@ export async function syncWeedReminders(
       return { scheduled: 0, cancelled, skipped: true };
     }
 
-    // Hedeftekileri baştan kurar. Aynı tanımlayıcı mevcut kaydın yerine
-    // geçtiği için `last_tended_at` değişmiş notların zamanı da düzelir.
+    // Kalanları baştan kuruyoruz. Aynı identifier eskisinin yerine geçtiği
+    // için last_tended_at'i değişen notların saati de düzeliyor.
     let scheduled = 0;
     for (const { noteId, title, fireAt } of desired.values()) {
       await Notifications.scheduleNotificationAsync({
@@ -238,8 +235,8 @@ export async function syncWeedReminders(
 
     return { scheduled, cancelled, skipped: false };
   } catch (error) {
-    // Bildirimler ikincil: Expo Go kısıtı ya da izin hatası uygulamayı
-    // durdurmamalı.
+    // Bildirimler olmasa da olur. Expo Go kısıtı ya da izin hatası uygulamayı
+    // durdurmasın.
     if (__DEV__) console.warn('[reminders] esitlenemedi', error);
     return EMPTY_RESULT;
   }
@@ -250,39 +247,38 @@ export async function syncWeedReminders(
 /* ------------------------------------------------------------------ */
 
 /**
- * Yazma başına bir eşitleme fazla pahalı: `syncWeedReminders` kurulu TÜM
- * bildirimleri okuyup baştan kuruyor. Bugün yazmalar seyrek olduğu için
- * (detay panelindeki "Kaydet" butonu) görünmüyor; blok editörü otomatik
- * kaydetmeye başladığında her tuş vuruşu bir eşitleme demek olurdu.
+ * Her yazmada eşitleme yapmak pahalı, syncWeedReminders kurulu bütün
+ * bildirimleri okuyup baştan kuruyor. Şu an yazmalar seyrek olduğu için
+ * hissedilmiyor ama editör otomatik kaydetmeye başlayınca her tuş bir
+ * eşitleme demek olurdu.
  *
- * Hatırlatma ~42 saat ötede, yani birkaç saniye bayat kalması önemsiz.
- * Önemli olan, kullanıcı uygulamadan ayrılmadan ÖNCE doğru olması — bunun
- * için `flushReminderSync` var.
+ * Hatırlatma zaten ~42 saat ötede, birkaç saniye gecikmesi önemli değil.
+ * Önemli olan kullanıcı uygulamadan çıkmadan önce doğru olması, onun için de
+ * flushReminderSync var.
  */
 const SYNC_DEBOUNCE_MS = 1_500;
 
 let pendingSync: ReturnType<typeof setTimeout> | null = null;
 
 /**
- * Eşitlemeler uç uca sıraya diziliyor. İkisi aynı anda çalışırsa biri
- * diğerinin yeni kurduğu bildirimi "artık istenmiyor" sanıp iptal edebilir:
- * her ikisi de `getAllScheduledNotificationsAsync` ile başlayıp o anki
- * listeye göre karar veriyor.
+ * Eşitlemeleri uç uca sıraya diziyoruz. İkisi aynı anda çalışırsa biri
+ * diğerinin yeni kurduğu bildirimi "artık gerekmiyor" sanıp iptal edebiliyor,
+ * çünkü ikisi de getAllScheduledNotificationsAsync ile başlayıp o anki listeye
+ * bakıyor.
  */
 let syncTail: Promise<void> = Promise.resolve();
 
 function runSyncNow(): Promise<void> {
   syncTail = syncTail.then(async () => {
-    // syncWeedReminders kendi hatalarını yutuyor; zincir kopmaz.
+    // syncWeedReminders hatayı içeride yutuyor, zincir kopmuyor.
     await syncWeedReminders();
   });
   return syncTail;
 }
 
 /**
- * Hatırlatmaların veritabanıyla eşitlenmesini ister. Arka arkaya gelen
- * çağrılar tek çalışmada birleşir — yazan tarafın eşitlemenin maliyetini
- * düşünmesi gerekmez.
+ * Eşitleme isteği bırakıyor. Arka arkaya gelen çağrılar tek çalışmada
+ * birleşiyor, yazan tarafın maliyeti düşünmesi gerekmiyor.
  */
 export function requestReminderSync(): void {
   if (pendingSync) clearTimeout(pendingSync);
@@ -293,11 +289,11 @@ export function requestReminderSync(): void {
 }
 
 /**
- * Bekleyen eşitlemeyi hemen çalıştırır ve bitmesini bekler.
+ * Bekleyen eşitlemeyi hemen çalıştırıp bitmesini bekliyor.
  *
- * Uygulama arka plana geçerken şart: JS zamanlayıcıları orada askıya
- * alınabiliyor, yani bekleyen debounce hiç çalışmayabilir — üstelik tam o an
- * işletim sistemine kurulu bildirimlerin doğru olması gereken an.
+ * Uygulama arka plana geçerken şart. JS timer'ları orada askıya alınabiliyor,
+ * yani bekleyen debounce hiç çalışmayabilir. Üstelik bildirimlerin doğru
+ * olması tam da o an gerekiyor.
  */
 export function flushReminderSync(): Promise<void> {
   if (pendingSync) {
@@ -307,7 +303,7 @@ export function flushReminderSync(): Promise<void> {
   return runSyncNow();
 }
 
-/** Tüm ot hatırlatmalarını kaldırır (çıkış/sıfırlama senaryoları). */
+/** Bütün ot hatırlatmalarını siler. Çıkış/sıfırlama senaryoları için. */
 export async function cancelAllWeedReminders(): Promise<void> {
   try {
     const existing = await Notifications.getAllScheduledNotificationsAsync();

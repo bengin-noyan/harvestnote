@@ -18,10 +18,10 @@ export default function App() {
       <SafeAreaProvider>
         <FarmProvider>
           {/*
-            Durum çubuğu yazıları koyu: kabuk aydınlık bir kağıt yüzey.
-            "light" bırakılırsa telefonda saat/pil beyaz kalır ve beyaz
-            başlığın üstünde görünmez olur — web'de durum çubuğu olmadığı
-            için tarayıcıda fark edilmez.
+            Durum çubuğu yazıları koyu, çünkü kabuk açık renk. "light"
+            bırakınca telefonda saat ve pil beyaz kalıyor, beyaz başlığın
+            üstünde görünmüyor. Web'de durum çubuğu olmadığı için tarayıcıda
+            fark edilmiyor.
           */}
           <StatusBar style="dark" />
           <FarmGate />
@@ -32,8 +32,8 @@ export default function App() {
 }
 
 /**
- * Açılış kapısı: migration'lar ve time-skip bitene kadar kabuğu monte etmez.
- * Görünümler böylece "veri hazır" varsayımıyla yazılabiliyor.
+ * Açılış kapısı. Migration'lar ve time-skip bitene kadar kabuğu göstermiyor.
+ * Böylece görünümler verinin hazır olduğunu varsayarak yazılabiliyor.
  */
 function FarmGate() {
   const { status, error, retry } = useFarm();
@@ -64,9 +64,9 @@ function FarmGate() {
 
 const styles = StyleSheet.create({
   /**
-   * Kök zemin uygulamanın her yerinde görünen renktir: açılış karesi, aşırı
-   * kaydırmada kalan boşluk, ekran geçişlerinin arkası. Kabukla aynı kağıt
-   * olmalı — koyu kalırsa uygulama koyu açılıp aydınlığa atlıyor.
+   * Kök zemin uygulamanın her yerinde görünüyor: açılış karesi, aşırı
+   * kaydırmadaki boşluk, ekran geçişlerinin arkası. Kabukla aynı renk olmalı,
+   * koyu kalırsa uygulama koyu açılıp sonra aydınlığa atlıyor.
    */
   root: { flex: 1, backgroundColor: colors.ground },
   center: {

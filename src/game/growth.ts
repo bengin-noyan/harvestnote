@@ -1,8 +1,7 @@
 /**
- * Büyüme/yabani ot kurallarının saf (yan etkisiz) hesabı.
- *
- * DB'den bilerek ayrıldı: kurallar burada, I/O `timeSkip.ts`'te. Böylece
- * mekanik, veritabanı veya React olmadan test edilebiliyor.
+ * Büyüme ve ot kuralları. Burada sadece hesap var, yazma yok.
+ * DB işleri timeSkip.ts'te; böylece bu dosyayı tek başına çalıştırıp
+ * kuralları deneyebiliyorum.
  */
 import type { NoteStatus, SeedType } from '../types';
 import {
@@ -11,7 +10,7 @@ import {
   type GrowthRules,
 } from './config';
 
-/** Simülasyon için gereken minimum not alanları. */
+/** Simülasyonun ihtiyacı olan alanlar, notun tamamı gerekmiyor. */
 export interface SimulatableNote {
   id: number;
   status: NoteStatus;
@@ -26,8 +25,8 @@ export interface SkipPlan {
 }
 
 /**
- * Bir notun verilen anda olması gereken statüsü.
- * Öncelik: yabani ot > büyüme. İkisi de sağlanıyorsa sonuç 'weedy'.
+ * Notun o an hangi statüde olması gerektiği.
+ * Ot büyümeyi eziyor, ikisi de olduysa sonuç 'weedy'.
  */
 export function resolveStatus(
   note: SimulatableNote,
@@ -36,10 +35,10 @@ export function resolveStatus(
 ): NoteStatus {
   if (now - note.last_tended_at >= rules.weedThresholdMs) return 'weedy';
 
-  // Simülasyon otu kendi başına temizlemez — bu kullanıcının jesti (tendNote).
+  // Otu simülasyon temizlemiyor, onu kullanıcı yapıyor (tendNote).
   if (note.status === 'weedy') return 'weedy';
 
-  // Büyüme tek yönlüdür: 'growing' bir not 'planted'a geri dönmez.
+  // Büyüme geri sarmıyor, growing olan not tekrar planted olmuyor.
   if (note.status === 'growing') return 'growing';
 
   return now - note.created_at >= growthDurationFor(note.seed_type, rules)
@@ -47,7 +46,7 @@ export function resolveStatus(
     : 'planted';
 }
 
-/** Hangi notun hangi statüye geçeceğine karar verir; hiçbir yan etkisi yoktur. */
+/** Kimin statüsü değişecek onu çıkarır. Yazma işi çağırana kalıyor. */
 export function computeSkipPlan(
   notes: SimulatableNote[],
   now: number,

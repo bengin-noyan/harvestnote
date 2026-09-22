@@ -1,10 +1,9 @@
 /**
- * Paylaşılan "şimdi" saati.
+ * Tek bir "şimdi" değeri.
  *
- * Görsel aşama (`resolveStage`) zamanın fonksiyonu olduğu için kartların
- * kendiliğinden olgunlaşması gerekiyor. Her kart kendi zamanlayıcısını
- * kurarsa 30 tohumda 30 interval olur; onun yerine ekran tek bir saat
- * tutup değeri aşağıya prop olarak geçiyor.
+ * Aşama zamana göre hesaplandığı için kartların kendiliğinden ilerlemesi
+ * lazım. Her kart kendi setInterval'ini kurarsa 30 notta 30 timer oluyor,
+ * onun yerine ekran tek saat tutup aşağıya prop geçiyor.
  */
 import { useEffect, useState } from 'react';
 

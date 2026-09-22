@@ -1,7 +1,5 @@
-/**
- * Temel buton. Pixel-art hissi için keskin köşe, kalın kenarlık ve basınca
- * "içeri gömülme" (offset gölgenin kaybolması) efekti.
- */
+// Standart buton. Pixel-art hissi için keskin köşe, kalın kenarlık ve basınca
+// gölgenin kaybolup butonun içeri gömülmesi.
 import React from 'react';
 import {
   Pressable,
@@ -25,10 +23,8 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * Tonlar aydınlık yüzeyde okunacak şekilde seçildi. `ghost` özellikle
- * dikkat ister: metni `textOnDark` iken kağıt panelde görünmez oluyordu.
- */
+// Renkleri açık zeminde okunacak şekilde seçtim. Özellikle ghost'a dikkat,
+// metni textOnDark iken açık panelde görünmüyordu.
 const TONES: Record<
   PixelButtonTone,
   { bg: string; border: string; text: string }
@@ -60,7 +56,7 @@ export function PixelButton({
         {
           backgroundColor: palette.bg,
           borderColor: palette.border,
-          // Basınca gölge kadar aşağı kayar: tuşa basılmış hissi.
+          // Basınca gölge kadar aşağı kayıyor, tuşa basılmış gibi dursun.
           transform: [{ translateY: pressed ? 3 : 0 }],
         },
         disabled && styles.disabled,

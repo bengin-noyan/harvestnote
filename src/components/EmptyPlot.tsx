@@ -1,11 +1,7 @@
-/**
- * Boş parsel — sürülmüş ama henüz ekilmemiş toprak.
- *
- * Tarlanın sonunda her zaman boş parsel bırakılır (bkz. FarmView'deki
- * hücre listesi). Ekmek başlıktaki bir butonun işi değil, toprağın kendisine
- * dokunmakla olur: böylece "ekle" eylemi de uygulama çerçevesinden çıkıp
- * tarlanın içine giriyor.
- */
+// Boş parsel: sürülmüş ama daha ekilmemiş toprak.
+// Tarlanın sonunda hep bir boş parsel duruyor (bkz. FarmView'deki hücre
+// listesi). Ekleme işi başlıktaki bir butonda değil, doğrudan toprağa
+// dokununca oluyor.
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -21,7 +17,7 @@ import { PlotGround, plotMetrics } from './PlotGround';
 
 interface Props {
   size: number;
-  /** Toprak lekesinin parselden parsele değişmesi için sıra numarası. */
+  /** Toprak deseni her parselde farklı olsun diye sıra numarası. */
   index: number;
   onPress: () => void;
 }
@@ -76,15 +72,8 @@ export function EmptyPlot({ size, index, onPress }: Props) {
 }
 
 const styles = StyleSheet.create({
-  /**
-   * Dolu parselle aynı kart ölçüleri, ama kesikli kenarlık: "burası henüz
-   * ekilmedi" mesajını yazıya gerek kalmadan veriyor.
-   */
-  /**
-   * Boş parsel bir nesne değil, bir boşluk: gölgesi yok ve zemini sayfayla
-   * aynı aileden. Kesikli kenarlık "burası henüz ekilmedi" mesajını yazıya
-   * gerek kalmadan veriyor.
-   */
+  // Boş parselin gölgesi yok, zemini de sayfayla aynı. Kesikli kenarlık
+  // "burası henüz ekilmedi" demeye yetiyor.
   plot: {
     overflow: 'hidden',
     borderRadius: radii.md,
@@ -93,9 +82,9 @@ const styles = StyleSheet.create({
     borderColor: colors.ruleStrong,
     backgroundColor: colors.surfaceSunken,
   },
-  /** Dokunma anında parsel canlanır — jest karşılıksız kalmasın. */
+  /** Dokununca renk değişsin ki basıldığı belli olsun. */
   plotPressed: { borderColor: colors.leafDeep, borderStyle: 'solid' },
-  /** Dekoratif katmanlar dokunuşu yutmamalı. */
+  /** Süs katmanları dokunuşu yutmasın. */
   noHit: { pointerEvents: 'none' },
   holeZone: {
     position: 'absolute',
@@ -106,7 +95,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   hole: { backgroundColor: colors.soil, opacity: 0.28 },
-  /** Yazı alt yarının ortasına oturur; kartın dibinde ölü alan kalmasın. */
+  /** Yazı alt yarının ortasına otursun, altta boşluk kalmasın. */
   base: {
     position: 'absolute',
     left: 0,
@@ -114,10 +103,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  /**
-   * Etikete opaklık verilmiyor: 0.55 opaklık bu metni ~1.9 kontrasta
-   * düşürüyordu. Geri çekilme hissi rengin kendisinden geliyor.
-   */
+  // Etikete opacity vermiyorum, 0.55 ile kontrast 1.9'a düşüyordu.
+  // Soluk dursun diye rengin kendisi yeterli.
   label: {
     ...typography.caption,
     fontSize: 10,

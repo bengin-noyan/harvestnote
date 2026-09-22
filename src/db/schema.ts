@@ -1,21 +1,21 @@
 /**
- * Şema ve migration tanımları.
+ * Şema ve migration'lar.
  *
- * Offline-first bir uygulamada kullanıcının verisi tek kopyadır; şema
- * değişikliği "drop & recreate" ile yapılamaz. Bu yüzden PRAGMA user_version
- * tabanlı, ileri doğru çalışan basit bir migration listesi tutuyoruz.
- * Yeni bir değişiklik = listeye yeni bir kayıt; eskiler ASLA düzenlenmez.
+ * Uygulama offline olduğu için kullanıcının verisinin tek kopyası var,
+ * drop & recreate yapamıyoruz. Onun yerine PRAGMA user_version'a bakan
+ * basit bir migration listesi tutuyoruz.
+ * Yeni değişiklik = listeye yeni kayıt. Eskilere dokunmuyoruz.
  */
 
 export const DATABASE_NAME = 'harvestnote.db';
 
-/** Settings tek satırlıdır; her yerde bu id ile okunur/yazılır. */
+/** Settings tek satır. Her yerde bu id ile okuyup yazıyoruz. */
 export const SETTINGS_ROW_ID = 1;
 
 export interface Migration {
   version: number;
   label: string;
-  /** Tek bir execAsync bloğu olarak çalıştırılacak SQL. */
+  /** Tek execAsync ile çalışacak SQL. */
   statements: string;
 }
 
@@ -41,7 +41,7 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_notes_field
         ON notes (harvested_at, created_at DESC);
 
-      -- Time-skip taraması: aktif notları son bakım zamanına göre süzer.
+      -- Time-skip taraması aktif notları last_tended_at'e göre süzüyor.
       CREATE INDEX IF NOT EXISTS idx_notes_tended
         ON notes (harvested_at, last_tended_at);
 
@@ -77,7 +77,7 @@ export const MIGRATIONS: Migration[] = [
       CREATE TABLE IF NOT EXISTS note_blocks (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         note_id    INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-        -- Seyrek numaralama (1000, 2000, ...): araya ekleme tek satır yazma.
+        -- Pozisyonlar seyrek (1000, 2000...). Araya ekleyince tek satır yazıyoruz.
         position   INTEGER NOT NULL,
         type       TEXT    NOT NULL DEFAULT 'paragraph'
                      CHECK (type IN ('paragraph','heading','todo','bullet',
@@ -88,12 +88,12 @@ export const MIGRATIONS: Migration[] = [
         updated_at INTEGER NOT NULL
       );
 
-      -- Editörün tek sorgusu: bir notun blokları, sırasıyla.
+      -- Editörün sorgusu: bir notun blokları, sırayla.
       CREATE INDEX IF NOT EXISTS idx_blocks_note
         ON note_blocks (note_id, position);
 
-      -- Geri doldurma: mevcut her content tek bir paragraf bloğuna dönüşür.
-      -- TRIM şartı olmazsa boş/boşluklu her not için ölü bir blok satırı doğar.
+      -- Eski notların content'ini tek bir paragraf bloğuna taşıyoruz.
+      -- TRIM olmazsa boş notlar için bomboş blok satırları oluşuyor.
       INSERT INTO note_blocks
         (note_id, position, type, text, checked, created_at, updated_at)
       SELECT id, 1000, 'paragraph', content, 0, created_at, last_tended_at
@@ -101,10 +101,10 @@ export const MIGRATIONS: Migration[] = [
        WHERE content IS NOT NULL AND TRIM(content) <> '';
     `,
   },
-  // Sonraki sürümler buraya eklenecek; yayınlanmış kayıtlar ASLA düzenlenmez.
+  // Yeni sürümler buraya. Yayınlanmış kayıtlara dokunmuyoruz.
 ];
 
-/** Migration listesindeki en yüksek sürüm = hedef şema sürümü. */
+/** Listedeki en yüksek sürüm hedef sürüm oluyor. */
 export const TARGET_SCHEMA_VERSION = MIGRATIONS.reduce(
   (max, m) => Math.max(max, m.version),
   0,

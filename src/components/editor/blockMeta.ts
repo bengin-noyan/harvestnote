@@ -1,10 +1,9 @@
 /**
- * Blok türlerinin sunum tarafı: etiket, simge, yer tutucu ve `/` menüsünde
+ * Blok türlerinin görünen tarafı: etiket, simge, placeholder ve `/` menüsünde
  * aranacak kelimeler.
  *
- * Neden `types/index.ts`'te değil: orası domain tipi, bu ise arayüz metni.
- * Neden `theme/`de değil: renk değil, dil taşıyor — tür başına Türkçe etiket
- * ve ipucu. Bu dosya React import etmiyor, saf veri.
+ * types/index.ts'e koymadım, orası domain tipi. theme'e de koymadım, renk
+ * değil metin taşıyor. Burası React import etmeyen düz veri.
  */
 import type { BlockType } from '../../types';
 
@@ -21,8 +20,8 @@ export interface BlockMeta {
   /** Ayracın metin kutusu yok; yalnızca çizgi çiziyor. */
   hasText: boolean;
   /**
-   * Enter'a basınca yeni blok aynı türde devam eder mi? Listelerde evet —
-   * madde madde yazarken her satırda türü yeniden seçmek istemezsin.
+   * Enter'a basınca yeni blok aynı türde devam etsin mi? Listelerde evet,
+   * yoksa her madde için türü tekrar seçmek gerekiyor.
    */
   continues: boolean;
 }
@@ -123,9 +122,9 @@ export const BLOCK_MENU_ORDER: BlockType[] = [
 ];
 
 /**
- * Türkçe yazımı arama için sadeleştirir: büyük/küçük farkı ve aksanlar
- * kalkar. "Sıralı" yazan da "sirali" yazan da aynı bloğu bulmalı; kullanıcı
- * `/` menüsünde hızlı yazarken Türkçe klavyeye geçmek zorunda kalmasın.
+ * Aramada Türkçe karakterleri sadeleştiriyor. "Sıralı" yazan da "sirali"
+ * yazan da aynı bloğu bulsun, menüde hızlı yazarken klavye değiştirmek
+ * zorunda kalmayalım.
  */
 export function foldTurkish(value: string): string {
   return value

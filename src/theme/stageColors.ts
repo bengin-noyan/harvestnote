@@ -1,27 +1,24 @@
 /**
- * Görsel aşamaların renkleri.
+ * Aşamaların renkleri.
  *
- * Neden `game/stages.ts`'te değil: orası saf kurallar katmanı — DB'si, React'i
- * ve artık teması da yok. Test çerçevesi kurulu olmadığı için oyun kuralları
- * `node stages.ts` ile doğrudan çalıştırılarak doğrulanıyor; o dosyaya bir
- * `react-native` bağımlılığı sızarsa (theme `StyleSheet` kullanıyor) bu imkân
- * kaybolur. Aşama *ne olduğunu* bilir, *neye benzediğini* bilmez.
+ * Bunlar neden stages.ts'te değil: test kurulu olmadığı için kuralları
+ * `node stages.ts` diye çalıştırıp deniyorum. theme StyleSheet kullandığı
+ * için oraya import edersem react-native de geliyor ve dosya çalışmıyor.
+ * Yani stages aşamayı biliyor, rengini bilmiyor.
  *
- * Buradaki tip importu yalnızca tip — derlemede silinir, çalışma zamanında
- * theme ile game arasında bağ kurmaz.
+ * Aşağıdaki import type'lı, derlemede siliniyor.
  */
 import type { VisualStage } from '../game/stages';
 import { colors } from './index';
 
 export interface StagePalette {
-  /** Parselin toprağı. Yalnızca ot basmış parsel zeminini değiştirir. */
+  /** Parselin toprak rengi. Sadece otlu parselde değişiyor. */
   tile: string;
   /** Koyu parsel kartının kenarlığı. */
   border: string;
   /**
-   * Aşamayı **aydınlık zeminde** temsil eden renk: başlıktaki sayaç çipi,
-   * detay panelindeki durum rozeti. `border` ile karıştırılmamalı — o toprak
-   * üstünde, bu kağıt üstünde okunacak şekilde seçildi.
+   * Açık zeminde kullanılan renk: başlıktaki sayaç, detaydaki rozet.
+   * `border` ile karıştırmayın, o koyu toprağın üstünde duruyor.
    */
   accent: string;
 }

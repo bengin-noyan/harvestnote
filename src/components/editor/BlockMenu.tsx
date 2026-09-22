@@ -1,13 +1,13 @@
 /**
- * Blok türü seçicisi.
+ * Blok türü menüsü.
  *
- * İki yerden açılıyor: bloğa `/` yazınca (süzülmüş liste) ve bloğa uzun
- * basınca (tüm liste + "Sil"). Aynı bileşen, çünkü ikisi de aynı soruyu
- * soruyor — bu blok ne olsun?
+ * İki yerden açılıyor: bloğa `/` yazınca (süzülmüş liste) ve tutamağa basınca
+ * (tüm liste + "Sil"). İkisi de "bu blok ne olsun" diye sorduğu için aynı
+ * bileşeni kullanıyorum.
  *
- * Bilerek `Modal` değil, satır içi panel: editör zaten bir `Modal` içindeki
- * `BottomSheet`'in içinde. RN'de iç içe modal Android'de jest ve odak
- * davranışını bozuyor; satır içi panel klavyeyi de kapatmıyor.
+ * Modal değil, satır içi panel. Editör zaten Modal içindeki BottomSheet'in
+ * içinde ve RN'de iç içe modal Android'de jestleri ve odağı bozuyor. Satır
+ * içi panel klavyeyi de kapatmıyor.
  */
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -21,14 +21,12 @@ interface Props {
   onSelect: (type: BlockType) => void;
   /** Verilirse listenin altına ayrı bir "Sil" satırı eklenir. */
   onDelete?: () => void;
-  /** Uzun basış menüsünde hangi türün seçili olduğunu göstermek için. */
+  /** Menüde hangi türün seçili olduğunu göstermek için. */
   activeType?: BlockType;
 }
 
-/**
- * Panel yüksekliği sınırlı: klavye açıkken sekiz satırlık liste ekranı
- * doldurup yazdığın bloğu görünmez yapıyordu.
- */
+// Panelin boyu sınırlı. Klavye açıkken sekiz satırlık liste ekranı kaplayıp
+// yazdığın bloğu gizliyordu.
 const MAX_HEIGHT = 224;
 
 export function BlockMenu({ items, onSelect, onDelete, activeType }: Props) {
@@ -115,7 +113,7 @@ const styles = StyleSheet.create({
   },
   rowPressed: { backgroundColor: colors.surfaceSunken },
   rowActive: { backgroundColor: colors.surfaceSunken },
-  /** Silme, tür listesinden bir çizgiyle ayrılıyor: farklı cinsten bir iş. */
+  /** Silmeyi çizgiyle ayırdım, tür değiştirmekten farklı bir şey. */
   deleteRow: {
     borderTopWidth: borders.hairline,
     borderTopColor: colors.rule,

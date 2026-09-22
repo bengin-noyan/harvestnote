@@ -1,11 +1,10 @@
 /**
- * Liste görünümü — aynı veri, tarla ızgarası yerine satırlar.
+ * Liste görünümü. Aynı veri, ızgara yerine satırlar.
  *
- * Tarla ızgarası durumu ve ilerlemeyi iyi anlatıyor ama *içeriği* göstermiyor:
- * parselde yalnızca başlık sığıyor. Liste bunun tersini yapıyor; her satırda
- * notun düz metin izdüşümünden bir önizleme var (`notes.content`, blokların
- * izdüşümü olarak zaten tazeleniyor — bu görünüm o sütunun ilk gerçek
- * müşterisi).
+ * Izgara durumu ve ilerlemeyi iyi gösteriyor ama içeriği göstermiyor, parsele
+ * sadece başlık sığıyor. Liste bunun tersi: her satırda notun düz metninden
+ * bir önizleme var. `notes.content` zaten blokların izdüşümü olarak
+ * güncelleniyor, bu görünüm o sütunu ilk gerçekten kullanan yer.
  */
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -101,10 +100,9 @@ function Row({
   const visual = STAGE_VISUALS[stage];
   const seed = SEED_CATALOG[note.seed_type];
   /**
-   * Ot basmış not listede de açılmaz — kartın ürün kuralı burada da geçerli.
-   * Ama listede kaydırma jesti yok: temizlemenin tek yolu tarlaya gitmek
-   * olsaydı kullanıcı kapana kısılırdı, o yüzden satır kendi düğmesini
-   * gösteriyor. İhmalin bedeli duruyor, çıkışı görünür oluyor.
+   * Otlu not listede de açılmıyor, karttaki kural burada da geçerli. Ama
+   * listede kaydırma jesti yok. Temizlemenin tek yolu tarlaya gitmek olsaydı
+   * kullanıcı sıkışıp kalırdı, o yüzden satır kendi düğmesini gösteriyor.
    */
   const blocked = stage === 'weedy';
   const progress = maturityProgress(note, now, undefined, labor);
@@ -128,7 +126,7 @@ function Row({
         </Text>
         {note.content ? (
           <Text style={styles.preview} numberOfLines={1}>
-            {/* İzdüşüm satır sonu taşıyor; listede tek satıra indiriliyor. */}
+            {/* İzdüşümde satır sonu var, listede tek satıra indiriyoruz. */}
             {note.content.replace(/\s+/g, ' ')}
           </Text>
         ) : (
@@ -136,8 +134,8 @@ function Row({
         )}
 
         {/*
-          Olgunluk çubuğu: yüzde genişlik `DimensionValue`'yu karşılamıyor,
-          o yüzden iki esneme oranı kullanılıyor (NoteCard'la aynı yöntem).
+          Olgunluk çubuğu. Yüzdelik genişlik DimensionValue'yu karşılamıyor,
+          o yüzden iki flex oranı kullanıyoruz (NoteCard'daki yöntemin aynısı).
         */}
         <View style={styles.bar}>
           <View

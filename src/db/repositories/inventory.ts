@@ -1,7 +1,7 @@
 /**
- * Kiler (Inventory) repository'si.
- * Hasat edilen ürünlerin kalıcı kaydı — buradan silme yalnızca kullanıcı
- * "tüketme/temizleme" derse yapılır, hasat akışı asla silmez.
+ * Kiler repository'si. Hasat edilen ürünlerin kalıcı kaydı.
+ * Buradan silme sadece kullanıcı "tüket/temizle" derse oluyor, hasat akışı
+ * hiçbir şeyi silmiyor.
  */
 import { getDatabase, type Database } from '../database';
 import { mapInventoryItem, toSeedType } from '../mappers';
@@ -23,9 +23,9 @@ export interface HarvestRecordInput {
 }
 
 /**
- * Düşük seviyeli insert: hasat akışı bunu kendi transaction'ı içinde
- * çağırdığı için bağlantıyı dışarıdan alır. Doğrudan çağırma — hasat için
- * notes repository'sindeki `harvestNote` kullanılmalı.
+ * Ham insert. Hasat akışı bunu kendi transaction'ının içinden çağırdığı için
+ * bağlantıyı dışarıdan alıyor. Direkt çağırmayın, hasat için notes
+ * repository'sindeki harvestNote var.
  */
 export async function insertHarvestRecord(
   db: Database,
@@ -105,7 +105,7 @@ export interface InventorySummaryEntry {
   value: number;
 }
 
-/** Kiler ekranındaki "ürün rafları" için türe göre gruplama. */
+/** Kiler ekranındaki raflar için türe göre gruplama. */
 export async function getInventorySummary(): Promise<InventorySummaryEntry[]> {
   const db = await getDatabase();
   const rows = await db.getAllAsync<{ seed_type: string; count: number }>(
@@ -123,7 +123,7 @@ export async function getInventorySummary(): Promise<InventorySummaryEntry[]> {
   });
 }
 
-/** Kilerden kalıcı olarak çıkarır (tüketme). */
+/** Kilerden tamamen siler (tüketme). */
 export async function removeInventoryItem(id: number): Promise<boolean> {
   const db = await getDatabase();
   const result = await db.runAsync('DELETE FROM inventory WHERE id = ?', [id]);

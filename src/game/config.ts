@@ -1,7 +1,7 @@
 /**
- * Oyun ekonomisinin tek ayar noktası. Eşikleri buradan değiştirmek
- * time-skip davranışını komple değiştirir; testlerde de bu sabitler
- * override edilebilsin diye fonksiyonlara opsiyonel `rules` olarak geçilir.
+ * Oyunun bütün ayarları burada. Eşikleri değiştirince time-skip davranışı
+ * komple değişiyor. Denerken üzerine yazabilmek için fonksiyonlara opsiyonel
+ * `rules` olarak geçiyoruz.
  */
 import type { SeedType } from '../types';
 
@@ -15,8 +15,8 @@ export interface GrowthRules {
   /** Son bakımdan itibaren bu süre geçerse not 'weedy' olur. */
   weedThresholdMs: number;
   /**
-   * Time-skip'in çalışması için gereken minimum boşluk. Uygulamayı arka
-   * plandan öne alma gibi saniyelik dönüşlerde boşuna yazma yapmamak için.
+   * Time-skip'in çalışması için gereken en az boşluk. Arka plandan geri
+   * dönme gibi saniyelik durumlarda boşuna yazma yapmasın diye.
    */
   minSkipMs: number;
 }
@@ -28,31 +28,30 @@ export const DEFAULT_GROWTH_RULES: GrowthRules = {
 };
 
 /**
- * Ot basmasına ne kadar kala hatırlatma gönderileceği.
+ * Ot basmasına ne kadar kala hatırlatma atacağız.
  *
- * 48 saatlik eşiğe 6 saat kala: kullanıcının aynı gün içinde tepki verebileceği
- * kadar erken, "daha çok var" diye görmezden gelemeyeceği kadar geç.
+ * 48 saatlik eşiğe 6 saat kala. Aynı gün içinde tepki verilebilecek kadar
+ * erken, "daha çok var" dedirtmeyecek kadar geç.
  */
 export const WEED_REMINDER_LEAD_MS = 6 * HOUR;
 
-/** Tohum başına metadata. Büyüme süresi türe göre farklılaşır. */
+/** Tohum başına bilgiler. Büyüme süresi türe göre değişiyor. */
 export interface SeedDefinition {
   type: SeedType;
-  /** i18n gelene kadar TR etiket. */
+  /** Şimdilik Türkçe, i18n sonra. */
   label: string;
   /** Kart üstünde ve tohum seçicide görünen ürün simgesi. */
   emoji: string;
-  /** Tohum seçicide görevin niteliğini anlatan kısa ipucu. */
+  /** Seçicide görünen kısa ipucu. */
   hint: string;
   /** Bu tür için 'planted' -> 'growing' süresi. */
   growthDurationMs: number;
   /**
-   * Ürünün hasada hazır ('harvestable') hale gelme süresi. Bu yalnızca
-   * görsel/etkileşimsel bir aşamadır — DB'deki `status` sütunu değişmez,
-   * bkz. src/game/stages.ts.
+   * Ürünün hasada hazır olma süresi. Bu sadece görsel bir aşama, DB'deki
+   * status sütunu değişmiyor (bkz. src/game/stages.ts).
    */
   maturityDurationMs: number;
-  /** Kilerdeki değeri — ileride skor/rozet mekaniği için. */
+  /** Kilerdeki puanı. İleride skor/rozet yaparsak lazım olacak. */
   value: number;
 }
 

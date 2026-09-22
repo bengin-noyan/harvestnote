@@ -1,22 +1,19 @@
 /**
- * Canlı ekin — notun bitkisi.
+ * Notun bitkisi.
  *
- * Uygulamayı ayıran şey bu: not bir satır değil, büyüyen bir organizma.
- * Emoji bunu yapamıyordu — emoji ya 🌱'dir ya 🌻, arası yok. Buradaki bitki
- * *sürekli* bir ilerlemeyi gösteriyor: sap uzuyor, yapraklar sırayla açılıyor,
- * ürün en sonda beliriyor. Olgunluk artık ayrı bir çubuk değil, bitkinin
- * kendisi.
+ * Önce emoji ile denedim, olmadı: emoji ya 🌱 ya 🌻, arası yok. Buradaki bitki
+ * sürekli bir ilerleme gösteriyor. Sap uzuyor, yapraklar sırayla açılıyor,
+ * ürün en sonda çıkıyor. Yani olgunluk ayrı bir çubuk değil, bitkinin kendisi.
  *
- * "Canlı"nın ikinci yarısı hareket: bitki durduğu yerde hafifçe salınıyor.
- * Salınım süslemesi değil işlevi — duran bir çizim resim gibi okunuyor,
- * salınan bir çizim yaşıyor gibi.
+ * Bitki bir de hafifçe salınıyor. Duran çizim resim gibi duruyordu, salınınca
+ * canlı gibi oluyor.
  *
- * Neden `react-native-svg` yok: proje kuralı gereksiz bağımlılık kurmamak, ve
- * bu biçimler View + borderRadius + transform ile çizilebiliyor. Yaprak, iki
- * köşesi yuvarlatılmış bir dikdörtgen; sap, bir çizgi.
+ * react-native-svg kullanmadım, bu şekiller View + borderRadius + transform
+ * ile çizilebiliyor. Yaprak iki köşesi yuvarlatılmış bir dikdörtgen, sap da
+ * bir çizgi.
  *
- * Bileşen tamamen dekoratif: jest yakalamaz, erişilebilirlik ağacına girmez.
- * Durumu metinle anlatan yer kartın alt yarısı.
+ * Bileşen tamamen süs: jest yakalamıyor, erişilebilirlik ağacına da girmiyor.
+ * Durumu yazıyla anlatan yer kartın alt yarısı.
  */
 import React, { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -38,16 +35,15 @@ import { colors } from '../theme';
 import { durations, easings } from '../theme/motion';
 import type { SeedType } from '../types';
 
-/** Bir salınımın tam turu. Nefes ritmine yakın: acele etmiyor. */
+/** Bir salınımın tam turu. Nefes gibi, acelesi yok. */
 const SWAY_PERIOD_MS = 2800;
 
 /**
- * Yaprakların açılma eşikleri (olgunluk oranı). Çiftler kaydırmalı: iki
- * yaprak aynı anda açılırsa bitki simetrik ve cansız duruyor.
+ * Yaprakların açılma eşikleri (olgunluk oranı). Çiftleri kaydırdım, iki yaprak
+ * aynı anda açılınca bitki simetrik ve cansız duruyor.
  *
- * İlk çiftin eşiği negatif, yani ekildiği anda yarı açık: çenek yaprakları.
- * Sıfırdan başlatınca yeni not çıplak bir çubuk gibi görünüyordu — filiz
- * değil, eksik çizim gibi.
+ * İlk çiftin eşiği negatif, yani ekildiği anda yarı açık (çenek yaprakları).
+ * Sıfırdan başlatınca yeni not çıplak bir çubuk gibi görünüyordu.
  */
 const LEAF_OPEN_SPAN = 0.18;
 
@@ -66,15 +62,15 @@ interface Props {
   stage: VisualStage;
   /** 0 = yeni ekildi, 1 = hasada hazır. */
   progress: number;
-  /** Çizim alanının yüksekliği (px). Genişlik bundan türetilir. */
+  /** Çizim alanının yüksekliği (px). Genişliği bundan hesaplıyoruz. */
   height: number;
   seed: SeedType;
 }
 
 /**
- * Bitkinin rengi. Aşamalar arasında ayrım yapan tek şey ot: sağlıklı bitki
- * ekildiğinden hasada kadar aynı yeşil, çünkü büyümeyi zaten boy ve yaprak
- * anlatıyor — renk de değişseydi iki ayrı şey aynı anda konuşuyor olurdu.
+ * Bitkinin rengi. Aşamalar arasında sadece ot farklı, sağlıklı bitki ekimden
+ * hasada kadar aynı yeşil. Büyümeyi zaten boy ve yapraklar anlatıyor, renk de
+ * değişince fazla oluyordu.
  */
 function palette(stage: VisualStage) {
   if (stage === 'weedy') {
@@ -88,7 +84,7 @@ export function LivingPlant({ stage, progress, height, seed }: Props) {
   const isWeedy = stage === 'weedy';
   const tone = palette(stage);
 
-  /** Olgunluk; dışarıdan sıçrayarak gelse bile bitki yumuşak büyür. */
+  /** Olgunluk. Dışarıdan zıplayarak gelse de bitki yumuşak büyüsün. */
   const grow = useSharedValue(progress);
   /** -1..1 arası salınım. */
   const sway = useSharedValue(0);
@@ -101,8 +97,8 @@ export function LivingPlant({ stage, progress, height, seed }: Props) {
   }, [progress, grow]);
 
   useEffect(() => {
-    // Hareket azaltma açıksa bitki durur — büyüme hâlâ animasyonlu, çünkü o
-    // tek seferlik bir geçiş, sürekli oynayan bir döngü değil.
+    // Hareket azaltma açıksa salınımı durduruyoruz. Büyüme yine animasyonlu,
+    // o tek seferlik bir geçiş, sürekli dönen bir döngü değil.
     if (reduced) {
       cancelAnimation(sway);
       sway.value = 0;
@@ -125,11 +121,11 @@ export function LivingPlant({ stage, progress, height, seed }: Props) {
   const fruitSize = Math.round(height * 0.42);
 
   /**
-   * Bütün bitki dipten salınır. `transformOrigin` olmasaydı merkezden dönüp
-   * sapın kökü topraktan ayrılıyordu.
+   * Bitki dipten salınıyor. transformOrigin vermezsek merkezden dönüyor ve
+   * sapın kökü topraktan ayrılıyor.
    */
   const swayStyle = useAnimatedStyle(() => {
-    // Ot basmış bitki salınmaz, öne düşer: ihmalin görsel karşılığı.
+    // Otlu bitki salınmıyor, öne düşüyor.
     const droop = isWeedy ? 13 : 0;
     const amplitude = isWeedy ? 0.6 : 2.4;
     return {
@@ -197,10 +193,10 @@ export function LivingPlant({ stage, progress, height, seed }: Props) {
 }
 
 /**
- * Tek yaprak: eşiği geçilince açılır.
+ * Tek yaprak, eşiği geçince açılıyor.
  *
- * Ayrı bileşen çünkü her yaprağın kendi `useAnimatedStyle`'ı var ve hook'lar
- * döngü içinde çağrılamaz.
+ * Ayrı bileşen olmasının sebebi: her yaprağın kendi useAnimatedStyle'ı var,
+ * hook'ları da döngü içinde çağıramıyoruz.
  */
 function Leaf({
   grow,
@@ -222,7 +218,7 @@ function Leaf({
   color: string;
 }) {
   const style = useAnimatedStyle(() => {
-    // Eşikten sonraki dar bir aralıkta açılır; sonrası sabit.
+    // Eşikten sonra dar bir aralıkta açılıyor, sonrası sabit.
     const open = interpolate(
       grow.value,
       [at, at + LEAF_OPEN_SPAN],
@@ -231,7 +227,7 @@ function Leaf({
     );
     return {
       opacity: open,
-      // Yaprak sapın boyuyla birlikte yukarı taşınır.
+      // Yaprak sapın boyuyla beraber yukarı çıkıyor.
       bottom: interpolate(
         grow.value,
         [0, 1],
@@ -240,7 +236,7 @@ function Leaf({
       transform: [
         { scaleX: side * open },
         { scaleY: open },
-        // Açılırken hafifçe yukarı kalkar: aşağıdan yukarı bir yay hissi.
+        // Açılırken hafifçe yukarı kalkıyor.
         { rotate: `${-18 * open}deg` },
       ],
     };
@@ -255,7 +251,7 @@ function Leaf({
           width,
           height: thickness,
           backgroundColor: color,
-          // Yaprak ucu sivri, dibi yuvarlak: tam elips cansız duruyor.
+          // Ucu sivri, dibi yuvarlak. Tam elips yapınca cansız duruyordu.
           borderTopLeftRadius: thickness,
           borderBottomLeftRadius: thickness,
           borderTopRightRadius: thickness * 1.6,
@@ -269,8 +265,8 @@ function Leaf({
 const styles = StyleSheet.create({
   root: { alignItems: 'center', justifyContent: 'flex-end' },
   /**
-   * Salınımın dönme ekseni dipte. Çocuklar buraya göre `bottom` ile
-   * konumlanıyor, yani hepsi kökten ölçülüyor.
+   * Salınımın ekseni dipte. Çocuklar buna göre `bottom` ile konumlanıyor,
+   * yani hepsi kökten ölçülüyor.
    */
   anchor: {
     width: '100%',

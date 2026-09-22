@@ -1,13 +1,12 @@
 /**
- * Not sayfası — notun tam ekran hâli.
+ * Not sayfası, notun tam ekran hali.
  *
- * Faz 1'de not alttan açılan bir paneldi (`maxHeight: 88%`), yani gövde her
- * zaman yarım görünüyordu ve klavye açılınca yazdığın satır ekranın dışına
- * çıkabiliyordu. Notion'ın en temel kararı notun bir *sayfa* olması; blok
- * editörünün nefes alabileceği tek düzen de bu.
+ * Önce alttan açılan bir paneldi (maxHeight: 88%) ama gövde hep yarım
+ * görünüyordu ve klavye açılınca yazdığın satır ekran dışına çıkabiliyordu.
+ * Notion'da not bir sayfa, blok editörünün rahat ettiği tek düzen de bu.
  *
- * Ölçüm sütunu ~720px'de sabitleniyor: geniş bir tarayıcıda satırlar ekran
- * boyunca uzarsa göz satır başını kaybediyor.
+ * Sütunu ~720px'de sabitledim. Geniş tarayıcıda satırlar ekran boyunca
+ * uzayınca göz satır başını kaybediyor.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -42,7 +41,7 @@ const PLANT_HEIGHT = 92;
 
 interface Props {
   note: Note;
-  /** Notun yapılacak sayımı; olgunluğun emek payı buradan geliyor. */
+  /** Notun yapılacak sayımı. Olgunluğun emek kısmı buradan geliyor. */
   labor?: TodoCount;
   onBack: () => void;
   onSave: (id: number, input: UpdateNoteInput) => Promise<void>;
@@ -71,9 +70,9 @@ export function NotePage({
   noteId.current = note.id;
 
   /**
-   * Başlık YALNIZCA başka bir nota geçilince sıfırlanır. `note` nesnesi
-   * otomatik kayıt sonrası her tazelemede yeniden üretiliyor; efekt kimliğe
-   * bakarsa kullanıcının yazdığını bir sonraki yazmada eski değerle ezerdi.
+   * Başlığı sadece başka nota geçince sıfırlıyoruz. `note` nesnesi otomatik
+   * kayıttan sonra her tazelemede yeniden üretiliyor, efekt nesnenin kendisine
+   * bakarsa kullanıcının yazdığını eski değerle eziyor.
    */
   useEffect(() => {
     setTitle(note.title);
@@ -87,8 +86,8 @@ export function NotePage({
     }
     const next = pendingTitle.current;
     pendingTitle.current = null;
-    // Boş başlık yazılmaz: `updateNote` zaten reddediyor, kullanıcı da
-    // silerken adı kaybetmeyi beklemiyor — eski ad yerinde kalır.
+    // Boş başlık yazmıyoruz. updateNote zaten reddediyor, kullanıcı da
+    // silerken adı kaybetmeyi beklemiyor, eski ad yerinde kalıyor.
     if (next === null || !next.trim()) return;
     try {
       await onSave(noteId.current, { title: next });
@@ -114,9 +113,9 @@ export function NotePage({
   }, []);
 
   /**
-   * Hasat ve sökme geri alınamaz: bekleyen otomatik kayıtlar önce inmeli.
-   * Hasat `harvested_at` damgaladıktan sonra blok izdüşümü artık nota
-   * yazılamaz (`WHERE harvested_at IS NULL`) — sıra burada önemli.
+   * Hasat ve sökme geri alınamıyor, bekleyen kayıtlar önce inmeli. Hasat
+   * harvested_at'i damgaladıktan sonra blok izdüşümü nota yazılamıyor
+   * (WHERE harvested_at IS NULL), yani sıra önemli.
    */
   const run = async (action: () => Promise<void>, hint: string) => {
     setBusy(true);
@@ -169,9 +168,8 @@ export function NotePage({
       >
         <View style={styles.column}>
           {/*
-            Notun ekini sayfanın tepesinde: burada ne kadar büyüdüğünü
-            görmek, aşağıdaki kutuları işaretlemenin neden bir şeye
-            yaradığını anlatan tek şey.
+            Ekin sayfanın en üstünde. Ne kadar büyüdüğünü burada görmek,
+            aşağıdaki kutuları işaretlemenin işe yaradığını gösteriyor.
           */}
           <View style={styles.hero}>
             <View style={styles.heroPlant}>
@@ -232,11 +230,10 @@ export function NotePage({
           </View>
 
           {/*
-            Belge yüzeyinde iki dolu renk slabı yan yana durunca sayfanın
-            ağırlık merkezi metinden düğmelere kayıyordu. Hasat tek birincil
-            eylem olarak kaldı ve kendi genişliğine çekildi; sökme sessiz bir
-            metin bağlantısına indi — geri alınamaz ama her gün yapılan bir
-            iş değil, o yüzden görünür olması yeter, bağırması gerekmiyor.
+            İki dolu renkli buton yan yana durunca sayfanın ağırlığı metinden
+            düğmelere kayıyordu. Hasat tek ana eylem olarak kaldı, sökme de düz
+            bir metin bağlantısına indi. Geri alınamaz ama her gün yapılan bir
+            iş de değil, görünür olması yeterli.
           */}
           <View style={styles.footer}>
             <PixelButton
@@ -277,10 +274,8 @@ export function NotePage({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.surface },
-  /**
-   * Üst şerit sayfanın bir parçası, ayrı bir başlık çubuğu değil: yalnızca
-   * saç teli çizgi ayırıyor, zemin aynı kağıt.
-   */
+  // Üst şerit sayfanın parçası, ayrı bir başlık çubuğu değil. Sadece ince bir
+  // çizgi ayırıyor, zemin aynı.
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -309,9 +304,9 @@ const styles = StyleSheet.create({
   scrollContent: { padding: spacing.lg, paddingBottom: spacing.xxl },
   column: { width: '100%', maxWidth: PAGE_MAX_WIDTH, alignSelf: 'center' },
   /**
-   * Bitki başlığın YANINDA değil ÜSTÜNDE. Yan yanayken başlık bitkinin
-   * genişliği kadar içeri kaçıyordu ve aşağıdaki bloklarla aynı sol kenarı
-   * paylaşmıyordu — belge yüzeyinde en çok göze batan şey bu kayma.
+   * Bitki başlığın yanında değil üstünde. Yan yanayken başlık bitkinin
+   * genişliği kadar içeri kaçıyordu ve aşağıdaki bloklarla aynı sol kenarda
+   * durmuyordu. En çok göze batan şey o kaymaydı.
    */
   hero: {
     alignItems: 'flex-start',
@@ -319,7 +314,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
   },
   heroPlant: { alignItems: 'center' },
-  /** Bitkinin bastığı toprak şeridi — kağıt üstünde küçük bir parsel. */
+  /** Bitkinin bastığı toprak şeridi, sayfadaki küçük bir parsel. */
   heroSoil: {
     width: PLANT_HEIGHT * 0.7,
     height: 5,

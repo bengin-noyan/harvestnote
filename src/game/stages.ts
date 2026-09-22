@@ -1,13 +1,12 @@
 /**
- * Görsel aşama (VisualStage) — UI'ın gördüğü durum.
+ * Görsel aşama. UI'ın gördüğü durum.
  *
- * Neden ayrı bir kavram: veritabanındaki `status` üç değerle sınırlı
- * ('planted' | 'growing' | 'weedy') ve şemada CHECK kısıtıyla kilitli.
- * "Hasada hazır" ise zamanın bir fonksiyonu — her saniye değişebilir, onu
- * satıra yazmak time-skip'i her açılışta gereksiz yazma yapmaya zorlardı.
- * Bu yüzden 'harvestable' kalıcılaştırılmaz, notun yaşından türetilir.
+ * DB'deki `status` üç değerle sınırlı ('planted' | 'growing' | 'weedy') ve
+ * şemada CHECK ile kilitli. "Hasada hazır" ise zamanla değişen bir şey, onu
+ * satıra yazsak time-skip her açılışta boşuna yazma yapardı. O yüzden
+ * 'harvestable' DB'ye yazılmıyor, notun yaşından hesaplanıyor.
  *
- * Sonuç: şema aynı kalır, UI canlı davranır.
+ * Böylece şema aynı kalıyor, UI canlı davranıyor.
  */
 import type { NoteStatus, SeedType } from '../types';
 import {
@@ -23,29 +22,29 @@ export type VisualStage = 'planted' | 'growing' | 'harvestable' | 'weedy';
 /**
  * Notun emek payı: işaretli ve toplam yapılacak sayısı.
  *
- * Bilerek yalnızca *sayım*: bu modül DB'ye, React'e ve temaya dokunmuyor ki
- * `node stages.ts` ile doğrudan çalıştırılıp doğrulanabilsin (test çerçevesi
- * kurulu değil). Blok listesini buraya taşımak o imkânı yok ederdi.
+ * Sadece sayı tutuyoruz. Bu dosya DB'ye, React'e ve temaya dokunmasın ki
+ * `node stages.ts` ile çalıştırıp deneyebileyim (test kurulu değil).
+ * Blok listesini buraya taşırsam o imkan gidiyor.
  */
 export interface LaborCount {
   done: number;
   total: number;
 }
 
-/** İşin ne kadarı bitti (0-1). Yapılacak yoksa null — emek ölçülemez. */
+/** İşin ne kadarı bitti (0-1). Yapılacak yoksa null, ölçecek bir şey yok. */
 export function laborRatio(labor?: LaborCount): number | null {
   if (!labor || labor.total <= 0) return null;
   return Math.min(1, Math.max(0, labor.done / labor.total));
 }
 
 /**
- * Notun şu andaki görsel aşaması.
+ * Notun şu anki görsel aşaması.
  *
- * `resolveStatus` üzerinden geçer; böylece kart, bir sonraki uygulama
- * açılışını beklemeden ot bağlamış görünür (DB ise time-skip'te yakalar).
+ * resolveStatus'tan geçiyor, böylece kart bir sonraki açılışı beklemeden
+ * otlanmış görünüyor. DB tarafını zaten time-skip yakalıyor.
  *
- * `labor` verilmezse davranış eskisiyle birebir aynı: yapılacak listesi
- * olmayan not yalnızca zamanla olgunlaşır.
+ * labor verilmezse davranış eskisiyle aynı: todo'su olmayan not sadece
+ * zamanla olgunlaşıyor.
  */
 export function resolveStage(
   note: SimulatableNote,
@@ -61,19 +60,16 @@ export function resolveStage(
 }
 
 /**
- * Olgunluğa kalan yol: 0 = yeni ekildi, 1 = hasada hazır.
+ * Olgunluk oranı: 0 yeni ekildi, 1 hasada hazır.
  *
- * Emek köprüsü burada: yapılacak listesi olan notta olgunluk yalnızca zamanın
- * değil *işin* de fonksiyonu — yarısı zaman, yarısı işaretlenen oran. Hepsi
- * işaretliyse not yaşına bakılmaksızın olgun sayılır; işi bitirmek ürünü
- * olgunlaştırır.
+ * Emek kısmı burada. Todo'su olan notta olgunluk yarı zaman, yarı işaretlenen
+ * oran. Hepsi işaretliyse yaşına bakmadan olgun sayıyoruz.
  *
- * Bunun bir bedeli var ve kasıtlı: yapılacakları olan bir not, süresi dolsa
- * bile işi yarım kaldıysa kendiliğinden hasada hazır olmuyor. Şikâyet zaten
- * "kullanıcı çalışsa bile bitki büyümüyor"du; tersi de doğru olmalı. Erken
- * hasat düğmesi her zaman açık.
+ * Bunun bir bedeli var, bilerek: todo'su olan not süresi dolsa bile işi yarım
+ * kaldıysa kendiliğinden hasada hazır olmuyor. Erken hasat düğmesi zaten hep
+ * açık.
  *
- * Hesap kalıcılaştırılmıyor — yeni sütun yok, time-skip'e yazma yok.
+ * Hesabı DB'ye yazmıyoruz: yeni sütun yok, time-skip'te yazma yok.
  */
 export function maturityProgress(
   note: SimulatableNote,
@@ -102,16 +98,15 @@ export function msUntilWeedy(
 }
 
 /**
- * Aşamanın renk taşımayan görsel kimliği: simge, etiket, jest ipucu.
- * Renkler bilinçli olarak burada değil — bkz. src/theme/stageColors.ts.
- * Bu modül saf kalmalı (DB, React ve tema importu yok) ki `node stages.ts`
- * ile doğrudan çalıştırılıp doğrulanabilsin.
+ * Aşamanın simgesi, etiketi ve jest ipucu. Renkler burada değil,
+ * src/theme/stageColors.ts'te duruyor. Bu dosyanın DB, React ve tema importu
+ * olmamalı ki `node stages.ts` ile çalıştırabileyim.
  */
 export interface StageVisual {
   /** Aşamanın simgesi. 'harvestable' ürünün kendi simgesini kullanır. */
   emoji: string;
   label: string;
-  /** Aşamanın kısa etkileşim ipucu. */
+  /** Ne yapılacağını söyleyen kısa ipucu. */
   hint: string;
 }
 

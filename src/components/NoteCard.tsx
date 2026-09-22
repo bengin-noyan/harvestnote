@@ -1,21 +1,20 @@
 /**
  * Tarladaki tek bir parsel.
  *
- * Parsel kendi kenarlığı, köşe yuvarlaması ve komşusuyla arasında boşluğu
- * olan bir karttır — tarlaya karışmaz, üstünde durur. Zemin çizgisi parseli
- * ikiye böler — üstünde bitki, altında yazı. Bitki höyüğe kök salar ve
- * olgunlaştıkça büyür: olgunluk ayrı bir ilerleme çubuğuyla değil,
- * doğrudan bitkinin boyuyla anlatılır (bkz. LivingPlant).
+ * Parsel kendi kenarlığı ve köşesi olan bir kart, tarlaya karışmıyor. Zemin
+ * çizgisi parseli ikiye bölüyor: üstte bitki, altta yazı. Bitki höyüğe basıyor
+ * ve olgunlaştıkça büyüyor. Yani olgunluğu ayrı bir ilerleme çubuğu değil,
+ * bitkinin boyu anlatıyor (bkz. LivingPlant).
  *
- * Jest haritası (aşamaya göre değişir):
- *   weedy        yana kaydır  -> otlar süzülüp gider, `tendNote` çalışır
- *                dokunma      -> AÇILMAZ; parsel sallanır ve ipucu gösterilir
- *   harvestable  yukarı kaydır / uzun bas -> ürün küçülüp kaybolur, hasat
+ * Jestler aşamaya göre değişiyor:
+ *   weedy        yana kaydır  -> otlar kayıp gidiyor, tendNote çalışıyor
+ *                dokunma      -> AÇILMIYOR, parsel sallanıp ipucu çıkıyor
+ *   harvestable  yukarı kaydır / uzun bas -> ürün küçülüp kayboluyor, hasat
  *                dokunma      -> detay
  *   diğer        dokunma      -> detay
  *
- * Aşamaların tamamı `resolveStage` ile türetilir; parsel hiçbir zaman kendi
- * başına durum uydurmaz.
+ * Aşamaların hepsi resolveStage'den geliyor, parsel kendi kafasına göre durum
+ * uydurmuyor.
  */
 import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -57,22 +56,22 @@ const CLEAR_DISTANCE = 88;
 const HARVEST_DISTANCE = 64;
 
 /**
- * Bitkinin çizim kutusunun zemin üstü yüksekliğe oranı. Kutu sabit; büyüyen
- * şey kutunun *içindeki* bitki (LivingPlant sapı olgunlukla uzatıyor).
+ * Bitkinin çizim kutusunun zemin üstü yüksekliğe oranı. Kutu sabit, büyüyen
+ * şey kutunun içindeki bitki (LivingPlant sapı olgunlukla uzatıyor).
  */
 const PLANT_BOX_RATIO = 0.74;
 
 interface Props {
   note: Note;
-  /** Ekranın paylaşılan saati — bkz. hooks/useNow. */
+  /** Ekranın ortak saati, bkz. hooks/useNow. */
   now: number;
-  /** Notun yapılacak sayımı; yoksa olgunluk yalnızca zamandan gelir. */
+  /** Notun yapılacak sayımı. Yoksa olgunluk sadece zamandan geliyor. */
   labor?: TodoCount;
   size: number;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
   onHarvest: (id: number) => void;
-  /** Ot basmış parsele dokunulduğunda: ipucu göster. */
+  /** Otlu parsele dokununca ipucu göstermek için. */
   onBlocked: () => void;
 }
 
@@ -110,7 +109,8 @@ function NoteCardComponent({
     cardScale.value = withSpring(1, springs.enter);
   }, [cardScale]);
 
-  // Aşama dışarıdan değişebilir (time-skip, ot temizleme): katmanları eşitle.
+  // Aşama dışarıdan da değişebiliyor (time-skip, ot temizleme), katmanları
+  // ona göre eşitliyoruz.
   useEffect(() => {
     weedOpacity.value = withTiming(isWeedy ? 1 : 0, {
       duration: durations.base,
@@ -119,7 +119,7 @@ function NoteCardComponent({
     if (!isWeedy) weedX.value = 0;
   }, [isWeedy, weedOpacity, weedX]);
 
-  // Olgun ürünün altındaki toprak nefes alır gibi parlar.
+  // Olgun ürünün altındaki toprak nefes alır gibi parlıyor.
   useEffect(() => {
     if (isHarvestable) {
       glow.value = 0.35;
@@ -139,9 +139,9 @@ function NoteCardComponent({
   const handleOpen = useCallback(() => onOpen(note.id), [onOpen, note.id]);
 
   /**
-   * Hasat animasyonu: küt bir "pop", ardından scale 0'a küçülme.
-   * UI thread'inde çalışan bir worklet — jest geri çağrılarından doğrudan
-   * çağrılabilsin diye useCallback'e sarılmadı.
+   * Hasat animasyonu: kısa bir "pop", sonra scale 0'a küçülme.
+   * UI thread'inde çalışan bir worklet. Jest callback'lerinden doğrudan
+   * çağırabilelim diye useCallback'e sarmadım.
    */
   const playHarvest = () => {
     'worklet';
@@ -166,7 +166,7 @@ function NoteCardComponent({
     .failOffsetY([-28, 28])
     .onUpdate((event) => {
       weedX.value = event.translationX;
-      // Otlar kaydırma ilerledikçe soluklaşır: geri bildirim anlık.
+      // Otlar kaydırdıkça soluyor, geri bildirim anında olsun.
       weedOpacity.value = Math.max(
         0,
         1 - Math.abs(event.translationX) / CLEAR_DISTANCE,
@@ -222,8 +222,8 @@ function NoteCardComponent({
     .onEnd((_event, success) => {
       if (!success) return;
       if (isWeedy) {
-        // Ot basmış not açılmaz: reddedişi animasyonla anlat.
-        // Sallanma adımı `fast`in yarısı: reddediş tereddütsüz okunmalı.
+        // Otlu not açılmıyor, reddettiğimizi animasyonla söylüyoruz.
+        // Sallanma adımı fast'in yarısı, tereddütsüz dursun.
         const step = durations.fast / 2;
         shakeX.value = withSequence(
           withTiming(-7, { duration: step }),
@@ -263,8 +263,8 @@ function NoteCardComponent({
   }));
 
   /**
-   * Parıltı toprağa vuran bir hâle; dolu altın bir leke olmasın diye
-   * opaklık dar bir aralıkta gezinir.
+   * Parıltı toprağa vuran bir hale. Komple altın bir leke olmasın diye opaklık
+   * dar bir aralıkta geziyor.
    */
   const glowStyle = useAnimatedStyle(() => ({
     opacity: 0.1 + glow.value * 0.22,
@@ -280,7 +280,7 @@ function NoteCardComponent({
       >
         <PlotGround size={size} variant={note.id} />
 
-        {/* Zemin çizgisinin üstü: bitki höyüğe basar. */}
+        {/* Zemin çizgisinin üstü: bitki höyüğe basıyor. */}
         <View
           style={[
             styles.plantZone,
@@ -348,10 +348,10 @@ function NoteCardComponent({
         </View>
 
         {/*
-          Ot katmanı: kaydırıldıkça kayar ve solar. Her zaman monte —
-          görünürlüğü opaklıkla yönetiliyor — ama ot yokken erişilebilirlik
-          ağacından çıkarılmalı: aksi halde ekran okuyucu sağlıklı bir
-          parselde "ot bastı / temizle" diye okuyor.
+          Ot katmanı. Kaydırdıkça kayıyor ve soluyor. Hep ekranda duruyor,
+          görünürlüğünü opaklıkla ayarlıyoruz. Ama ot yokken erişilebilirlik
+          ağacından çıkarmak lazım, yoksa ekran okuyucu sağlam parselde de
+          "ot bastı / temizle" diye okuyor.
         */}
         <Animated.View
           accessibilityElementsHidden={!isWeedy}
@@ -396,7 +396,7 @@ function NoteCardComponent({
 export const NoteCard = React.memo(NoteCardComponent);
 
 const styles = StyleSheet.create({
-  /** Parsel tarlaya karışmaz: kendi kenarlığı ve köşesiyle bir kart. */
+  /** Parsel tarlaya karışmıyor, kendi kenarlığı ve köşesi olan bir kart. */
   plot: {
     overflow: 'hidden',
     borderRadius: radii.md,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.soilDeep,
     ...elevation.card,
   },
-  /** Dekoratif katmanlar jestleri yakalamamalı. */
+  /** Süs katmanları jestleri yakalamasın. */
   noHit: { pointerEvents: 'none' },
   plantZone: {
     position: 'absolute',
@@ -427,9 +427,9 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   /**
-   * Yazı bloğu zemin çizgisinin altındaki yarının ortasına oturur. Üstten
-   * sabit padding verildiğinde kartın dibinde bir tutam ölü toprak kalıyordu;
-   * koyu zeminde fark edilmiyordu, kağıt zeminde hata gibi duruyor.
+   * Yazı bloğu zemin çizgisinin altındaki yarının ortasına oturuyor. Üstten
+   * sabit padding verince kartın dibinde bir tutam boş toprak kalıyordu. Koyu
+   * zeminde belli olmuyordu ama açık zeminde hata gibi duruyor.
    */
   base: {
     position: 'absolute',

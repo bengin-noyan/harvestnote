@@ -1,7 +1,5 @@
-/**
- * Kilerdeki tek bir ürün. Kalite (golden / normal / withered) kartın
- * kenarlığını, zeminini ve rozetini belirler — başarı hissi buradan geliyor.
- */
+// Kilerdeki tek bir ürün. Kalite (golden / normal / withered) kartın
+// kenarlığını, zeminini ve rozetini belirliyor.
 import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -40,7 +38,7 @@ export const QUALITY_STYLES: Record<HarvestQuality, QualityStyle> = {
   normal: {
     label: 'Normal',
     badge: '🧺',
-    // `parchment` yeni sayfa zeminine çok yakındı; kart zeminden ayrılsın.
+    // parchment yeni sayfa zeminine çok yakındı, kart ayrışsın diye değiştirdim.
     bg: colors.surface,
     border: colors.ruleStrong,
     text: colors.textPrimary,
@@ -68,7 +66,7 @@ export function InventoryCard({ item, onDiscard }: Props) {
   const seed = SEED_CATALOG[item.seed_type];
   const shimmer = useSharedValue(0);
 
-  // Altın ürünler hafifçe parlar; diğerleri sabit durur.
+  // Altın ürünler hafif parlıyor, diğerleri sabit.
   useEffect(() => {
     if (!quality.glows) return;
     shimmer.value = withRepeat(withTiming(1, { duration: 1600 }), -1, true);

@@ -1,28 +1,28 @@
 /**
- * Blok editörü — notun gövdesi.
+ * Blok editörü, notun gövdesi.
  *
- * Bütün klavye kararları burada toplandı, çünkü hepsi komşu bloklara bakmayı
- * gerektiriyor ve `BlockRow`'un komşusu yok.
+ * Klavye kararlarının hepsi burada. Hepsi komşu bloklara bakmayı gerektiriyor
+ * ve BlockRow'un komşusundan haberi yok.
  *
- * Etkileşim sözleşmesi:
+ * Kurallar:
  *
  * | tuş / jest | koşul | sonuç |
  * | --- | --- | --- |
  * | Enter | liste bloğu ve satır boş | listeden çık (paragrafa dön) |
- * | Enter | diğer | bloğu böl; liste türleri kendini sürdürür |
+ * | Enter | diğer | bloğu böl, liste türleri kendini sürdürür |
  * | Backspace | satır başı, tür paragraf değil | paragrafa dön |
  * | Backspace | satır başı, paragraf | öncekiyle birleş |
  * | `/` | satır başında | blok menüsü |
  * | soldaki tutamak | her blok | tür menüsü + sil |
  *
- * Enter neden `onKeyPress` ile değil: Android'de `onKeyPress` yalnızca bazı
- * klavyelerde ve tuşlarda tetikleniyor. Çok satırlı `TextInput` ise satır
- * sonunu metnin *içinde* veriyor — onu `onChangeText`'te yakalamak iki
- * platformda da aynı çalışan tek yol.
+ * Enter'ı neden onKeyPress ile yakalamıyoruz: Android'de onKeyPress sadece
+ * bazı klavyelerde ve bazı tuşlarda tetikleniyor. Çok satırlı TextInput ise
+ * satır sonunu metnin içine koyuyor, onu onChangeText'te yakalamak iki
+ * platformda da çalışan tek yol.
  *
- * Backspace'i aynı şekilde yakalayamıyoruz (silme metne bir iz bırakmıyor),
- * o yüzden `onKeyPress` + imleç konumu kullanılıyor. Android'de boş kutuda
- * tetiklenmeme ihtimaline karşı tutamak menüsündeki "Bloğu sil" garantili
+ * Backspace'i aynı şekilde yakalayamıyoruz, silme metinde iz bırakmıyor. Onun
+ * için onKeyPress + imleç konumu kullanıyoruz. Android'de boş kutuda
+ * tetiklenmeyebiliyor, o yüzden tutamak menüsündeki "Bloğu sil" garantili
  * çıkış yolu olarak duruyor.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -47,14 +47,14 @@ import { BlockRow } from './BlockRow';
 
 interface Props {
   /**
-   * `useBlocks` sonucu dışarıdan geliyor: paneli kapatan ya da notu hasat
-   * eden akışın bekleyen otomatik kaydı önce yazabilmesi (`flush`) gerekiyor,
-   * o yüzden kanca editörün içinde değil onu barındıran panelde duruyor.
+   * useBlocks sonucu dışarıdan geliyor. Paneli kapatan ya da notu hasat eden
+   * akışın önce bekleyen kaydı yazması (flush) gerekiyor, o yüzden hook
+   * editörün içinde değil onu tutan panelde duruyor.
    */
   editor: UseBlocksResult;
 }
 
-/** İmleci taşımadan önce beklenen kare: odak Android'de imleci sona atıyor. */
+/** İmleci taşımadan önce beklenen kare. Android'de odak imleci sona atıyor. */
 const CARET_DELAY_MS = 16;
 
 export function BlockEditor({ editor }: Props) {
@@ -84,7 +84,7 @@ export function BlockEditor({ editor }: Props) {
   );
   /** Tutamakla açılan tür/sil menüsünün bloğu. */
   const [menuFor, setMenuFor] = useState<number | null>(null);
-  /** Odaktaki blok — yalnızca tutamağı koyulaştırmak için. */
+  /** Odaktaki blok. Sadece tutamağı koyulaştırmak için tutuluyor. */
   const [activeId, setActiveId] = useState<number | null>(null);
 
   const registerRef = useCallback((id: number, ref: TextInput | null) => {
@@ -99,8 +99,8 @@ export function BlockEditor({ editor }: Props) {
   useEffect(() => {
     if (!focusTarget) return;
     const input = inputs.current.get(focusTarget.blockId);
-    // Blok henüz render edilmediyse bir sonraki `blocks` değişiminde tekrar
-    // denenecek; hedefi temizlemiyoruz.
+    // Blok daha render edilmediyse bir sonraki blocks değişiminde tekrar
+    // deneniyor, o yüzden hedefi temizlemiyoruz.
     if (!input) return;
 
     const { caret } = focusTarget;
@@ -109,7 +109,7 @@ export function BlockEditor({ editor }: Props) {
 
     if (caret === null) return;
     const timer = setTimeout(() => {
-      // setSelection RN 0.72+ ile geldi; yoksa imleç sonda kalır, kayıp yok.
+      // setSelection RN 0.72 ile geldi. Yoksa imleç sonda kalıyor, sorun değil.
       const withSelection = input as TextInput & {
         setSelection?: (start: number, end: number) => void;
       };
@@ -127,9 +127,9 @@ export function BlockEditor({ editor }: Props) {
   /* ---------------------------------------------------------------- */
 
   /**
-   * `numbered` blokların gösterdiği sayı DB'de tutulmuyor: ardışık sıralı
-   * maddelerin kaçıncısı olduğundan türetiliyor. Araya paragraf girerse
-   * sayaç yeniden 1'den başlar — kullanıcının beklediği de bu.
+   * numbered blokların numarası DB'de tutulmuyor, ardışık sıralı maddelerin
+   * kaçıncısı olduğundan hesaplanıyor. Araya paragraf girerse sayaç 1'den
+   * başlıyor, beklenen davranış da bu.
    */
   const ordinals = useMemo(() => {
     const map = new Map<number, number>();
@@ -164,7 +164,7 @@ export function BlockEditor({ editor }: Props) {
           return;
         }
 
-        // Liste türleri kendini sürdürür; diğerleri paragrafa döner.
+        // Liste türleri devam ediyor, diğerleri paragrafa dönüyor.
         const nextType: BlockType = meta.continues ? block.type : 'paragraph';
         void splitBlock(block.id, parts, nextType).then((newId) => {
           if (newId !== null) focusBlock(newId, 0);
@@ -172,8 +172,8 @@ export function BlockEditor({ editor }: Props) {
         return;
       }
 
-      // `/` yalnızca satır başında menü açar. Boşluk gelirse kullanıcı blok
-      // değil metin yazıyordur ("/usr/bin" gibi) — menü çekilir.
+      // `/` sadece satır başında menü açıyor. Boşluk gelirse kullanıcı menü
+      // değil düz metin yazıyordur ("/usr/bin" gibi), menüyü kapatıyoruz.
       if (text.startsWith('/') && !text.includes(' ')) {
         setSlash({ blockId: block.id, query: text.slice(1) });
       } else if (slash?.blockId === block.id) {
@@ -193,11 +193,11 @@ export function BlockEditor({ editor }: Props) {
       if (event.nativeEvent.key !== 'Backspace') return;
 
       const selection = selections.current.get(block.id);
-      // Satır başında değilsek normal silme; karışma.
+      // Satır başında değilsek normal silme, karışmıyoruz.
       if (!selection || selection.start !== 0 || selection.end !== 0) return;
 
-      // Önce türden çık: madde işaretini silmek isteyen kullanıcı bir üstteki
-      // bloğun sonuna atlamayı beklemiyor.
+      // Önce türden çıkıyoruz. Madde işaretini silmek isteyen kullanıcı bir
+      // üstteki bloğun sonuna atlamayı beklemiyor.
       if (block.type !== 'paragraph') {
         void convert(block.id, 'paragraph');
         return;
@@ -229,13 +229,13 @@ export function BlockEditor({ editor }: Props) {
       setSlash(null);
       setMenuFor(null);
 
-      // `/baslik` yazısı bloğun metni olarak kalmamalı.
+      // "/baslik" yazısı bloğun metni olarak kalmasın.
       void convert(blockId, type, clearText ? '' : undefined).then(() => {
         if (type !== 'divider') {
           focusBlock(blockId, clearText ? 0 : null);
           return;
         }
-        // Ayracın metin kutusu yok; altına yazılacak bir paragraf açılır.
+        // Ayracın metin kutusu yok, altına yazmak için paragraf açıyoruz.
         void splitBlock(blockId, ['', ''], 'paragraph').then((newId) => {
           if (newId !== null) focusBlock(newId, 0);
         });
@@ -338,10 +338,8 @@ export function BlockEditor({ editor }: Props) {
 
 const styles = StyleSheet.create({
   loading: { paddingVertical: spacing.xl, alignItems: 'center' },
-  /**
-   * Boş alan da dokunulabilir olmalı: Notion'da olduğu gibi notun altına
-   * dokununca yazmaya devam edilir. Yükseklik parmak hedefi kadar.
-   */
+  // Notun altındaki boşluğa dokununca da yazmaya devam edilsin, Notion'daki
+  // gibi. Yükseklik parmak hedefi kadar.
   appendRow: { paddingVertical: spacing.md },
   appendText: { ...typography.caption, color: colors.textMuted },
 });

@@ -1,13 +1,12 @@
 /**
- * Bir parselin toprağı.
+ * Parselin toprağı.
  *
- * Parseller artık bitişik değil: her biri kendi kenarlığı ve köşe
- * yuvarlamasıyla duran bir kart. Karıklar da parselin iki yanında pay
- * bırakır — komşununkiyle birleşip ızgarayı tek bir çizgi yığınına
- * çevirmesinler diye.
+ * Parseller bitişik değil, her biri kendi kenarlığı olan bir kart. Karıkların
+ * iki yanında pay bırakıyorum, yoksa komşu parselinkiyle birleşip ızgara tek
+ * bir çizgi yığınına dönüyor.
  *
- * Zemin çizgisi (`GROUND_RATIO`) parseli ikiye böler: üstü boşluk, altı yazı.
- * Bitki bu çizgideki höyüğe kök salar — kutunun ortasında yüzmez.
+ * Zemin çizgisi (GROUND_RATIO) parseli ikiye bölüyor: üstü boşluk, altı yazı.
+ * Bitki bu çizgideki höyüğe oturuyor, kutunun ortasında durmuyor.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -35,24 +34,24 @@ export function plotMetrics(size: number): PlotMetrics {
 /**
  * Toprağın tonu.
  *
- * `soil`  — ekili parsel: koyu toprak kartı, sayfanın üstünde duran bir nesne.
- * `paper` — boş parsel: henüz bir şey yok, o yüzden sayfanın kendisi. Kağıt
- *   zeminde yalnızca sürülmüş toprağın izi (karık, zemin çizgisi, höyük)
- *   soluk çizgiler halinde görünür. Boş parselin de koyu olduğu ilk denemede
- *   tarla, ekili olanlardan çok boş olanlarla dikkat çekiyordu.
+ * soil  - ekili parsel, koyu toprak kartı.
+ * paper - boş parsel. Henüz bir şey yok, o yüzden sayfayla aynı renk; sadece
+ *   sürülmüş toprağın izleri (karık, zemin çizgisi, höyük) soluk görünüyor.
+ *   İlk denemede boş parseller de koyuydu ve tarlada en çok onlar göze
+ *   batıyordu.
  */
 export type PlotTone = 'soil' | 'paper';
 
 interface Props {
   size: number;
   /**
-   * Toprağın tonu bütün parsellerde aynıdır; aşama bitkiyle anlatılır.
-   * Yalnızca ot basmış parsel toprağın rengini de değiştirir.
+   * Toprak rengi bütün parsellerde aynı, aşamayı bitki anlatıyor.
+   * Sadece otlu parselde toprak da değişiyor.
    */
   soil?: string;
   /**
-   * Toprağın tek renk bir dikdörtgen gibi durmaması için parsele göre
-   * değişen ama sabit kalan küçük leke farkı (not id'si ya da sıra no).
+   * Toprak düz bir dikdörtgen gibi durmasın diye küçük leke farkı. Parsele
+   * göre değişiyor ama sabit kalıyor (not id'si ya da sıra no).
    */
   variant?: number;
   tone?: PlotTone;
@@ -68,8 +67,8 @@ export function PlotGround({
   const paper = tone === 'paper';
   const background = soil ?? (paper ? colors.surfaceSunken : colors.soil);
 
-  // Kağıt zeminde çizgiler koyu ve çok soluk; toprakta ise zaten koyu olan
-  // zemine daha koyu bir iz olarak düşüyor. Renk aynı, opaklık farklı.
+  // Kağıt zeminde çizgiler iyice soluk duruyor, koyu toprakta biraz daha
+  // belirgin. Renk aynı, sadece opaklık değişiyor.
   const lineOpacity = paper
     ? { furrow: 0.1, ground: 0.16, mound: 0.14 }
     : { furrow: 0.22, ground: 0.3, mound: 0.45 };
@@ -86,7 +85,7 @@ export function PlotGround({
         <View style={[styles.patch, { opacity: 0.02 + (variant % 4) * 0.015 }]} />
       )}
 
-      {/* Karıklar — kenarlarda pay var, komşu parselle birleşmesinler diye. */}
+      {/* Karıklar. Kenarlarda pay var ki komşu parselle birleşmesinler. */}
       <View
         style={[
           styles.furrow,
@@ -124,10 +123,10 @@ export function PlotGround({
 }
 
 const styles = StyleSheet.create({
-  /** Tamamen dekoratif: jestler alttaki parsele ulaşmalı. */
+  /** Tamamen süs. Jestler alttaki parsele gitsin. */
   root: { pointerEvents: 'none' },
   patch: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
-  /** Opaklıklar tona göre satır içinde veriliyor (bkz. lineOpacity). */
+  /** Opaklık tona göre satır içinde veriliyor (bkz. lineOpacity). */
   furrow: {
     position: 'absolute',
     left: 10,

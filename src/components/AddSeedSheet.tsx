@@ -1,4 +1,4 @@
-/** Yeni tohum ekme paneli: başlık, detay ve tohum türü. */
+// Tohum ekleme paneli: başlık, detay, tohum türü.
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 

@@ -1,10 +1,10 @@
 /**
- * Alttan açılan panel. Ekstra kütüphane kurmamak için RN `Modal` + Reanimated
- * ile kuruldu; tutamağından aşağı sürüklenerek kapatılabiliyor.
+ * Alttan açılan panel. Ekstra kütüphane kurmamak için RN Modal + Reanimated
+ * ile yaptım, tutamağından aşağı çekince kapanıyor.
  *
- * Not: Android'de RN Modal ayrı bir view hiyerarşisine render edildiği için
- * içindeki jestlerin çalışması adına içerik kendi `GestureHandlerRootView`'i
- * ile sarmalanmak zorunda.
+ * Dikkat: Android'de RN Modal ayrı bir view hiyerarşisine gidiyor, o yüzden
+ * içindeki jestlerin çalışması için içeriği kendi GestureHandlerRootView'i
+ * ile sarmak zorundayız.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -50,14 +50,14 @@ export function BottomSheet({
   subtitle,
   children,
 }: Props) {
-  // Kapanış animasyonunun oynayabilmesi için Modal, `visible` false olduktan
-  // sonra da kısa süre monte kalır.
+  // Kapanış animasyonu oynasın diye Modal, visible false olduktan sonra da
+  // kısa süre ekranda kalıyor.
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(0);
   const dragY = useSharedValue(0);
   /**
-   * Panel ekranın en altına yapışır; jest çubuğu olan telefonlarda son buton
-   * onun altında kalıyordu. Sabit dolguya alt güvenli alan ekleniyor.
+   * Panel ekranın en altına yapışıyor ve jest çubuğu olan telefonlarda son
+   * buton onun altında kalıyordu. Alt güvenli alanı padding'e ekliyoruz.
    */
   const insets = useSafeAreaInsets();
 
@@ -156,24 +156,21 @@ const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
   /**
-   * box-none: panelin disindaki bosluk arkadaki backdrop'a tiklamayi gecirmeli.
+   * box-none: panelin dışındaki boşluk tıklamayı arkadaki backdrop'a geçirsin.
    *
-   * `flex: 1` şart: panelin `maxHeight: '88%'` kuralı yüzde olduğu için
-   * ebeveynin kesin bir yüksekliği olmadan çözülmüyordu. Kesin yükseklik
-   * olmayınca panel içeriği kadar büyüyüp ekranı taşıyor ve başlığı yukarı
-   * itiyordu — yatay modda ve klavye açıkken küçük ekranlarda görünüyor.
+   * flex: 1 şart. Panelin maxHeight: '88%' kuralı yüzde olduğu için ebeveynin
+   * net bir yüksekliği yoksa çözülmüyor. O zaman panel içeriği kadar büyüyüp
+   * ekranı taşıyor ve başlığı yukarı itiyor. Yatay modda ve klavye açıkken
+   * küçük ekranlarda görülüyor.
    */
   avoider: { flex: 1, justifyContent: 'flex-end', pointerEvents: 'box-none' },
-  /**
-   * Panel artık kendi kenarlığıyla değil, gölgesi ve köşesiyle kağıttan
-   * ayrılıyor: altındaki ekran zaten aydınlık, kalın çerçeve onu kutuya
-   * çeviriyordu.
-   */
+  // Panel artık kenarlıkla değil, gölge ve köşe yuvarlamasıyla ayrılıyor.
+  // Altındaki ekran zaten açık renk, kalın çerçeve paneli kutuya çeviriyordu.
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
-    // paddingBottom satır içinde: alt güvenli alana bağlı.
+    // paddingBottom satır içinde veriliyor, alt güvenli alana bağlı.
     maxHeight: '88%',
     ...elevation.overlay,
   },

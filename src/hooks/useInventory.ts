@@ -1,4 +1,4 @@
-/** Kiler ekranının veri kancası. */
+// Kiler ekranının verisi.
 import { useCallback, useEffect, useState } from 'react';
 
 import {
@@ -13,7 +13,7 @@ import type { InventoryItem } from '../types';
 export interface UseInventoryResult {
   items: InventoryItem[];
   summary: InventorySummaryEntry[];
-  /** SEED_CATALOG değerlerine göre toplam hasat puanı. */
+  /** Toplam hasat puanı. Değerler SEED_CATALOG'dan geliyor. */
   totalValue: number;
   loading: boolean;
   reload: () => Promise<void>;
@@ -66,8 +66,8 @@ export function useInventory(): UseInventoryResult {
     async (id: number) => {
       setItems((prev) => prev.filter((item) => item.id !== id));
       await removeInventoryItem(id);
-      // Kiler yazması tarladaki hiçbir notun `last_tended_at`'ine dokunmaz,
-      // yani kurulu hiçbir hatırlatmanın anı değişmez: içerik kanalı yeterli.
+      // Kiler yazması hiçbir notun last_tended_at'ini değiştirmiyor, yani
+      // kurulu hatırlatmalar da kaymıyor. İçerik kanalı yeterli.
       notifyContentChanged();
     },
     [notifyContentChanged],

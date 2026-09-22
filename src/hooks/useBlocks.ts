@@ -1,18 +1,18 @@
 /**
- * Blok editörünün veri kancası.
+ * Blok editörünün verisi.
  *
- * İki farklı yazma ritmi var ve ayrımı bu dosyanın tamamını belirliyor:
+ * İki ayrı yazma ritmi var, dosyanın tamamı bu ayrıma göre kurulu:
  *
- * - **Metin** yerelde anında değişir, DB'ye debounce'lu iner. Her tuş vuruşunda
- *   SQLite'a yazmanın anlamı yok; kullanıcı duraklayınca tek yazma yeter.
- * - **Yapısal işler** (blok ekleme/silme/birleştirme) önce bekleyen metni
- *   yazar, sonra DB'de çalışır, sonra listeyi tazeler. Yapı değişirken yerel
- *   listeyi tahmin etmeye çalışmak, pozisyon hesabını iki yerde tekrarlamak
- *   demek olurdu.
+ * - Metin yerelde anında değişiyor, DB'ye debounce ile iniyor. Her tuşta
+ *   SQLite'a yazmanın anlamı yok, kullanıcı durunca tek yazma yetiyor.
+ * - Yapısal işler (ekleme/silme/birleştirme) önce bekleyen metni yazıyor,
+ *   sonra DB'de çalışıyor, sonra listeyi tazeliyor. Yapı değişirken yerel
+ *   listeyi tahmin etmeye kalkarsam pozisyon hesabını ikinci kez yazmam
+ *   gerekiyor.
  *
- * Her yazma `notes.last_tended_at`'i tazelediği için (yazmak bir bakımdır)
- * bildirim kanalı `notifyScheduleChanged` — eşitleme zaten debounce'lu,
- * bkz. `requestReminderSync`.
+ * Her yazma notes.last_tended_at'i tazelediği için (yazmak da bakım sayılıyor)
+ * bildirim kanalı notifyScheduleChanged. Eşitleme zaten debounce'lu,
+ * bkz. requestReminderSync.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -40,24 +40,24 @@ export interface UseBlocksResult {
   /** Metin değişti: yerelde anında, DB'ye debounce'lu. */
   setText: (id: number, text: string) => void;
   /**
-   * Bloğu parçalara böler. `parts[0]` mevcut blokta kalır, kalanı ardına
-   * yeni blok olarak girer (yapıştırılan çok satırlı metin de buradan geçer).
-   * Odaklanılacak son bloğun id'sini döndürür.
+   * Bloğu parçalara bölüyor. parts[0] mevcut blokta kalıyor, kalanı arkasına
+   * yeni blok olarak giriyor (yapıştırılan çok satırlı metin de buradan
+   * geçiyor). Odaklanılacak son bloğun id'sini döndürüyor.
    */
   splitBlock: (
     id: number,
     parts: string[],
     type: BlockType,
   ) => Promise<number | null>;
-  /** Tür değiştirir; `text` verilirse metni de birlikte yazar. */
+  /** Tür değiştiriyor. text verilirse metni de yazıyor. */
   convert: (id: number, type: BlockType, text?: string) => Promise<void>;
   toggleCheck: (id: number) => Promise<void>;
   /**
-   * Satır başındaki Backspace: bloğu bir öncekinin sonuna ekler ve siler.
-   * İlk bloktaysa ya da öncesi ayraçsa null döner (ayraç ayrıca silinir).
+   * Satır başındaki Backspace. Bloğu bir öncekinin sonuna ekleyip siliyor.
+   * İlk bloktaysa ya da öncesi ayraçsa null dönüyor (ayracı da siliyor).
    */
   mergeWithPrevious: (id: number) => Promise<MergeTarget | null>;
-  /** Bloğu siler; odaklanılacak komşunun id'sini döndürür. */
+  /** Bloğu siliyor, odaklanılacak komşunun id'sini döndürüyor. */
   removeBlock: (id: number) => Promise<number | null>;
   /** Bekleyen otomatik kaydı hemen yazar (panel kapanırken). */
   flush: () => Promise<void>;
@@ -71,7 +71,7 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
   /** Yazılmayı bekleyen metinler: blok id -> metin. */
   const pending = useRef(new Map<number, string>());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Async geri çağrılarda güncel listeyi okumak için (bayat closure olmasın). */
+  /** Async callback'lerde güncel listeyi okumak için, closure bayatlamasın. */
   const latest = useRef<NoteBlock[]>([]);
 
   latest.current = blocks;
@@ -107,7 +107,7 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
     }
   }, [notifyScheduleChanged]);
 
-  /** Son hâli ref'te: unmount temizliğinin bayat flush çağırmaması için. */
+  /** Son hali ref'te dursun ki unmount temizliği eski flush'ı çağırmasın. */
   const flushRef = useRef(flush);
   flushRef.current = flush;
 
@@ -154,8 +154,7 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
 
     return () => {
       cancelled = true;
-      // Başka bir nota geçiliyor ya da editör kapanıyor: bekleyen metin
-      // kaybolmasın.
+      // Başka nota geçiliyor ya da editör kapanıyor, bekleyen metin uçmasın.
       void flushRef.current();
     };
   }, [noteId]);
@@ -171,7 +170,7 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
       const head = parts[0] ?? '';
       const rest = parts.slice(1);
 
-      // Bu bloğun metnini açıkça yazıyoruz; bekleyen kaydı düşür.
+      // Bu bloğun metnini zaten burada yazıyoruz, bekleyeni listeden çıkar.
       pending.current.delete(id);
       await flush();
 
@@ -207,8 +206,8 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
       pending.current.delete(id);
       await flush();
 
-      // Ayraç metin taşımaz — repository de temizliyor, yerel liste de
-      // hemen aynı hâle gelsin ki kutu bir kare metinli görünmesin.
+      // Ayraçta metin olmuyor. Repository de temizliyor ama yerel liste de
+      // hemen aynı olsun, yoksa kutu bir kare metinli görünüyor.
       const nextText = type === 'divider' ? '' : text;
       setBlocks((prev) =>
         prev.map((block) =>
@@ -265,8 +264,8 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
       await flush();
 
       try {
-        // Ayracın metni yok: birleştirilecek bir şey de yok, ayraç silinir
-        // ve imleç bulunduğu blokta kalır.
+        // Ayracın metni yok, birleştirilecek bir şey de yok. Ayracı siliyoruz,
+        // imleç bulunduğu blokta kalıyor.
         if (previous.type === 'divider') {
           await deleteBlock(previous.id);
           await reload();
@@ -295,7 +294,7 @@ export function useBlocks(noteId: number | null): UseBlocksResult {
       const list = latest.current;
       const index = list.findIndex((block) => block.id === id);
       if (index < 0) return null;
-      // Silinenden sonra odak bir öncekine, yoksa bir sonrakine gider.
+      // Silince odak bir öncekine gidiyor, o yoksa bir sonrakine.
       const neighbour = list[index - 1] ?? list[index + 1] ?? null;
 
       pending.current.delete(id);
