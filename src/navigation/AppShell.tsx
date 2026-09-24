@@ -1,26 +1,22 @@
 /**
- * Uygulamanın kabuğu.
+ * Uygulamanın kabuğu. Solda kenar çubuğu, sağda açık olan sayfa.
  *
- * Alt sekmelerin yerine geçti. Sebep düzen: kenar çubuğu + içerik sütunu React
- * Navigation'ın ekran/sekme kaplarıyla sürekli çakışıyordu ve burada en fazla
- * iki seviyelik bir yığın var (görünüm -> not sayfası). O kadarı düz state ile
- * daha az kodla çıkıyor. Karşılığında Android geri tuşunu elle bağlamak
- * gerekti (aşağıda).
+ * React Navigation'ı kaldırdım çünkü kenar çubuğuyla sürekli çakışıyordu. En
+ * fazla iki seviye var (sayfa ve not), düz state yetiyor. Android geri tuşunu
+ * aşağıda elle bağladım.
  *
- * Bütün not verisi tek useNotes() çağrısından geliyor ve prop olarak aşağı
- * iniyor. Kenar çubuğu, liste ve tarla ayrı ayrı çağırsaydı her revision
- * artışında aynı sorgu üç kere koşardı.
+ * useNotes() ve useInventory() sadece burada çağrılıyor, sayfalara prop olarak
+ * iniyor. Her sayfa kendisi çağırınca aynı sorgu birkaç kere çalışıyordu.
  *
- * Geniş ekranda kenar çubuğu sabit, dar ekranda soldan çıkan çekmece. Aynı
- * bileşen, iki yerleşim.
+ * Geniş ekranda kenar çubuğu sabit ve gizlenebiliyor, dar ekranda çekmece.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   BackHandler,
+  Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -34,17 +30,28 @@ import Animated, {
 
 import { AddSeedSheet } from '../components/AddSeedSheet';
 import { HintToast } from '../components/HintToast';
-import { resolveStage } from '../game/stages';
+import { FadeIn } from '../components/ui/FadeIn';
+import { DAY } from '../game/config';
+import { msUntilWeedy, resolveStage } from '../game/stages';
+import { useInventory } from '../hooks/useInventory';
 import { useNotes } from '../hooks/useNotes';
 import { useNow } from '../hooks/useNow';
 import { useReminderTap } from '../hooks/useReminderTap';
+import { BoardView } from '../screens/BoardView';
 import { FarmView } from '../screens/FarmView';
+import { GuideView } from '../screens/GuideView';
+import { HomeView } from '../screens/HomeView';
 import { InventoryView } from '../screens/InventoryView';
 import { ListView } from '../screens/ListView';
 import { NotePage } from '../screens/NotePage';
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { SettingsView } from '../screens/SettingsView';
+import { StatsView } from '../screens/StatsView';
+import { UpcomingView } from '../screens/UpcomingView';
 import { durations, easings } from '../theme/motion';
-import { Sidebar, SIDEBAR_WIDTH, type WorkspaceView } from './Sidebar';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
+import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
+import { TopBar } from './TopBar';
+import { isFieldTab, VIEW_META, type FieldTab, type WorkspaceView } from './views';
 
 /**
  * Kenar çubuğunun sabit durabilmesi için gereken en az genişlik. 900px altında
@@ -52,22 +59,25 @@ import { Sidebar, SIDEBAR_WIDTH, type WorkspaceView } from './Sidebar';
  */
 const WIDE_BREAKPOINT = 900;
 
-const VIEW_TITLES: Record<WorkspaceView, string> = {
-  farm: 'Tarla',
-  list: 'Liste',
-  inventory: 'Kiler',
-};
-
 export function AppShell() {
-  const { notes, labor, loading, plant, tend, harvest, save, remove } = useNotes();
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const { notes, labor, loading, plant, tend, harvest, save, remove, toggleFavorite } =
+    useNotes();
+  const inventory = useInventory();
   const now = useNow();
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_BREAKPOINT;
 
-  const [view, setView] = useState<WorkspaceView>('farm');
+  const [view, setView] = useState<WorkspaceView>('home');
+  // Tarla'da en son hangi sekme açıktı, geri dönünce o açılsın
+  const [fieldTab, setFieldTab] = useState<FieldTab>('farm');
+  // geniş ekranda kenar çubuğu gizlendi mi
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [openNoteId, setOpenNoteId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [searchFocus, setSearchFocus] = useState(0);
   const [hint, setHint] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   /** Bildirimden gelen not. Liste henüz yüklenmemiş olabilir. */
@@ -95,31 +105,61 @@ export function AppShell() {
 
   const selectView = useCallback((next: WorkspaceView) => {
     setView(next);
+    if (isFieldTab(next)) setFieldTab(next);
     setOpenNoteId(null);
     setDrawerOpen(false);
   }, []);
 
-  /**
-   * Android'in geri tuşu. React Navigation olmadığı için yığını burada elle
-   * çözüyoruz: önce açık not, sonra çekmece, sonra uygulamadan çıkış.
-   */
+  const openField = useCallback(() => selectView(fieldTab), [selectView, fieldTab]);
+
+  const startAdding = useCallback(() => {
+    setAdding(true);
+    setDrawerOpen(false);
+  }, []);
+
+  // Kenar çubuğu görünmüyorsa üst çubuğa ☰ koyuyoruz.
+  const openSidebar = wide
+    ? sidebarHidden
+      ? () => setSidebarHidden(false)
+      : undefined
+    : () => setDrawerOpen(true);
+
+  // Android geri tuşu. Sırayla notu kapatıyor, çekmeceyi kapatıyor, ana
+  // sayfaya dönüyor, en son uygulamadan çıkıyor.
   useEffect(() => {
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        if (openNoteId !== null) {
-          setOpenNoteId(null);
-          return true;
-        }
-        if (drawerOpen) {
-          setDrawerOpen(false);
-          return true;
-        }
-        return false;
-      },
-    );
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (openNoteId !== null) {
+        setOpenNoteId(null);
+        return true;
+      }
+      if (drawerOpen) {
+        setDrawerOpen(false);
+        return true;
+      }
+      if (view !== 'home') {
+        setView('home');
+        return true;
+      }
+      return false;
+    });
     return () => subscription.remove();
-  }, [openNoteId, drawerOpen]);
+  }, [openNoteId, drawerOpen, view]);
+
+  // Web'de Ctrl+K (Mac'te Cmd+K) arama kutusuna odaklanıyor.
+  // Kenar çubuğu kapalıysa önce açıyoruz.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (wide) setSidebarHidden(false);
+        else setDrawerOpen(true);
+        setSearchFocus((n) => n + 1);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [wide]);
 
   // Bildirime dokunulmuş, not yüklenince açıyoruz.
   useEffect(() => {
@@ -139,6 +179,17 @@ export function AppShell() {
         (note.content ?? '').toLocaleLowerCase('tr').includes(term),
     );
   }, [notes, search]);
+
+  // Yaklaşanlar'daki sayı. Otlu olanlar ve 1 gün içinde otlanacaklar.
+  const upcomingCount = useMemo(
+    () =>
+      notes.filter(
+        (note) =>
+          resolveStage(note, now, undefined, labor.get(note.id)) === 'weedy' ||
+          msUntilWeedy(note, now) < DAY,
+      ).length,
+    [notes, labor, now],
+  );
 
   const openNoteRecord = notes.find((note) => note.id === openNoteId) ?? null;
 
@@ -172,11 +223,13 @@ export function AppShell() {
       search={search}
       onSearch={setSearch}
       onSelectView={selectView}
+      onOpenField={openField}
       onSelectNote={openNote}
-      onAdd={() => {
-        setAdding(true);
-        setDrawerOpen(false);
-      }}
+      onAdd={startAdding}
+      upcomingCount={upcomingCount}
+      inventoryCount={inventory.items.length}
+      searchFocusSignal={searchFocus}
+      onCollapse={wide ? () => setSidebarHidden(true) : undefined}
       onClose={wide ? undefined : () => setDrawerOpen(false)}
     />
   );
@@ -192,6 +245,9 @@ export function AppShell() {
           onHarvest={harvest}
           onDelete={remove}
           onHint={setHint}
+          onOpenSidebar={openSidebar}
+          favorite={openNoteRecord.favorited_at !== null}
+          onToggleFavorite={() => void toggleFavorite(openNoteRecord.id)}
         />
       );
     }
@@ -199,70 +255,114 @@ export function AppShell() {
     if (loading) {
       return (
         <View style={styles.loading}>
-          <ActivityIndicator color={colors.leafDeep} />
+          <ActivityIndicator color={colors.textMuted} />
         </View>
       );
     }
 
-    if (view === 'inventory') return <InventoryView />;
+    const searching = search.trim().length > 0;
 
-    if (view === 'list') {
-      return (
-        <ListView
-          notes={filtered}
-          labor={labor}
-          now={now}
-          searching={search.trim().length > 0}
-          onOpen={openNote}
-          onTend={handleTend}
-          onAdd={() => setAdding(true)}
-        />
-      );
+    switch (view) {
+      case 'home':
+        return (
+          <HomeView
+            notes={notes}
+            labor={labor}
+            now={now}
+            inventoryCount={inventory.items.length}
+            onOpen={openNote}
+            onTend={handleTend}
+            onHarvest={handleHarvest}
+            onAdd={startAdding}
+            onSelectView={selectView}
+          />
+        );
+      case 'upcoming':
+        return (
+          <UpcomingView
+            notes={notes}
+            labor={labor}
+            now={now}
+            onOpen={openNote}
+            onTend={handleTend}
+            onHarvest={handleHarvest}
+          />
+        );
+      case 'inventory':
+        return <InventoryView inventory={inventory} />;
+      case 'stats':
+        return (
+          <StatsView notes={notes} labor={labor} now={now} inventory={inventory} />
+        );
+      case 'settings':
+        return (
+          <SettingsView noteCount={notes.length} inventoryCount={inventory.items.length} />
+        );
+      case 'guide':
+        return <GuideView onAdd={startAdding} />;
+      case 'list':
+        return (
+          <ListView
+            notes={filtered}
+            labor={labor}
+            now={now}
+            searching={searching}
+            onOpen={openNote}
+            onTend={handleTend}
+            onAdd={startAdding}
+            onSelectTab={selectView}
+          />
+        );
+      case 'board':
+        return (
+          <BoardView
+            notes={filtered}
+            labor={labor}
+            now={now}
+            onOpen={openNote}
+            onTend={handleTend}
+            onAdd={startAdding}
+            onSelectTab={selectView}
+          />
+        );
+      case 'farm':
+        return (
+          <FarmView
+            notes={filtered}
+            labor={labor}
+            now={now}
+            onOpen={openNote}
+            onTend={handleTend}
+            onHarvest={handleHarvest}
+            onBlocked={handleBlocked}
+            onAdd={startAdding}
+            onSelectTab={selectView}
+          />
+        );
     }
-
-    return (
-      <FarmView
-        notes={filtered}
-        labor={labor}
-        now={now}
-        onOpen={openNote}
-        onTend={handleTend}
-        onHarvest={handleHarvest}
-        onBlocked={handleBlocked}
-        onAdd={() => setAdding(true)}
-      />
-    );
   })();
+
+  // Not sayfasının kendi üst çubuğu var, orada bunu çizmiyoruz.
+  const pageKey = openNoteRecord ? `note-${openNoteRecord.id}` : `view-${view}`;
+  const meta = VIEW_META[view];
 
   return (
     <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
       <View style={styles.layout}>
-        {wide ? <View style={styles.sidebarSlot}>{sidebar}</View> : null}
+        {wide ? (
+          <CollapsibleSidebar hidden={sidebarHidden}>{sidebar}</CollapsibleSidebar>
+        ) : null}
 
         <View style={styles.content}>
-          {/*
-            Dar ekranda çekmeceyi açan şerit. Not sayfası açıkken gizliyoruz,
-            NotePage kendi geri çubuğunu taşıyor ve iki şerit üst üste biniyor.
-          */}
-          {!wide && !openNoteRecord ? (
-            <View style={styles.topBar}>
-              <Pressable
-                onPress={() => setDrawerOpen(true)}
-                hitSlop={spacing.sm}
-                style={({ pressed }) => [
-                  styles.menuButton,
-                  pressed ? styles.pressed : null,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Kenar çubuğunu aç"
-              >
-                <Text style={styles.menuGlyph}>☰</Text>
-              </Pressable>
-              <Text style={styles.topTitle}>{VIEW_TITLES[view]}</Text>
-            </View>
-          ) : null}
-
-          {body}
+          {openNoteRecord ? null : (
+            <TopBar
+              crumbs={[{ label: meta.label, emoji: meta.emoji, icon: meta.icon }]}
+              onOpenSidebar={openSidebar}
+            />
+          )}
+          <FadeIn key={pageKey} style={styles.page} offset={8}>
+            {body}
+          </FadeIn>
         </View>
       </View>
 
@@ -272,14 +372,35 @@ export function AppShell() {
         </Drawer>
       ) : null}
 
-      <AddSeedSheet
-        visible={adding}
-        onClose={() => setAdding(false)}
-        onPlant={plant}
-      />
+      <AddSeedSheet visible={adding} onClose={() => setAdding(false)} onPlant={plant} />
 
       <HintToast message={hint} onHide={() => setHint(null)} />
     </SafeAreaView>
+  );
+}
+
+// Geniş ekrandaki kenar çubuğu. Gizlerken genişliği 0'a iniyor.
+// İçerisi sabit genişlikte kalıyor, yoksa kapanırken yazılar alt satıra kayıyordu.
+function CollapsibleSidebar({
+  hidden,
+  children,
+}: {
+  hidden: boolean;
+  children: React.ReactNode;
+}) {
+  const styles = useStyles();
+  const width = useSharedValue(hidden ? 0 : SIDEBAR_WIDTH);
+  useEffect(() => {
+    width.value = withTiming(hidden ? 0 : SIDEBAR_WIDTH, {
+      duration: durations.slow,
+      easing: easings.out,
+    });
+  }, [hidden, width]);
+  const style = useAnimatedStyle(() => ({ width: width.value }));
+  return (
+    <Animated.View style={[styles.sidebarSlot, style]}>
+      <View style={styles.sidebarInner}>{children}</View>
+    </Animated.View>
   );
 }
 
@@ -299,6 +420,7 @@ function Drawer({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const styles = useStyles();
   // Kapanış animasyonu oynasın diye kısa süre ekranda kalıyor.
   const [mounted, setMounted] = useState(open);
   const progress = useSharedValue(0);
@@ -340,37 +462,20 @@ function Drawer({
           accessibilityLabel="Kenar çubuğunu kapat"
         />
       </Animated.View>
-      <Animated.View style={[styles.drawerPanel, panelStyle]}>
-        {children}
-      </Animated.View>
+      <Animated.View style={[styles.drawerPanel, panelStyle]}>{children}</Animated.View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   root: { flex: 1, backgroundColor: colors.surface },
   layout: { flex: 1, flexDirection: 'row' },
-  sidebarSlot: { width: SIDEBAR_WIDTH },
+  sidebarSlot: { overflow: 'hidden' },
+  sidebarInner: { width: SIDEBAR_WIDTH, flex: 1 },
   content: { flex: 1, backgroundColor: colors.surface },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: borders.hairline,
-    borderBottomColor: colors.rule,
-  },
-  menuButton: {
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  pressed: { backgroundColor: colors.surfaceSunken },
-  menuGlyph: { ...typography.heading, color: colors.textSecondary },
-  topTitle: { ...typography.heading, color: colors.textPrimary },
+  page: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   drawerRoot: { ...StyleSheet.absoluteFill, flexDirection: 'row' },
-  drawerBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
+  drawerBackdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.backdrop },
   drawerPanel: { width: SIDEBAR_WIDTH },
-});
+}));

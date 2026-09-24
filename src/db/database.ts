@@ -111,6 +111,7 @@ export async function resetDatabase(): Promise<void> {
     DROP TABLE IF EXISTS inventory;
     DROP TABLE IF EXISTS notes;
     DROP TABLE IF EXISTS settings;
+    DROP TABLE IF EXISTS preferences;
     PRAGMA user_version = 0;
   `);
   await migrate(db);

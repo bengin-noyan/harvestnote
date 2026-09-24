@@ -60,6 +60,7 @@ export function mapNote(row: NoteRow): Note {
     seed_type: toSeedType(row.seed_type),
     last_tended_at: row.last_tended_at,
     harvested_at: row.harvested_at ?? null,
+    favorited_at: row.favorited_at ?? null,
   };
 }
 

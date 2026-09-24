@@ -1,16 +1,23 @@
-// Standart buton. Pixel-art hissi için keskin köşe, kalın kenarlık ve basınca
-// gölgenin kaybolup butonun içeri gömülmesi.
+// Uygulamadaki standart buton.
+// İsmi eski pixel-art tasarımdan kaldı, artık düz bir buton. Basınca biraz küçülüyor.
 import React from 'react';
 import {
   Pressable,
   StyleSheet,
   Text,
-  View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { useHover } from '../hooks/useHover';
+import { borders, radii, spacing, typography, type ThemeColors } from '../theme';
+import { springs } from '../theme/motion';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 export type PixelButtonTone = 'primary' | 'soil' | 'ghost' | 'danger';
 
@@ -23,17 +30,36 @@ interface Props {
   style?: StyleProp<ViewStyle>;
 }
 
-// Renkleri açık zeminde okunacak şekilde seçtim. Özellikle ghost'a dikkat,
-// metni textOnDark iken açık panelde görünmüyordu.
-const TONES: Record<
-  PixelButtonTone,
-  { bg: string; border: string; text: string }
-> = {
-  primary: { bg: colors.leafDeep, border: colors.grass, text: colors.surface },
-  soil: { bg: colors.soilLight, border: colors.soilDeep, text: colors.textOnDark },
-  ghost: { bg: 'transparent', border: colors.ruleStrong, text: colors.textSecondary },
-  danger: { bg: colors.danger, border: '#7d2f1e', text: colors.surface },
-};
+function tonesFor(
+  colors: ThemeColors,
+): Record<PixelButtonTone, { bg: string; hover: string; border: string; text: string }> {
+  return {
+  primary: {
+    bg: colors.accent,
+    hover: colors.accentPressed,
+    border: colors.accent,
+    text: colors.onAccent,
+  },
+  soil: {
+    bg: colors.surfaceSunken,
+    hover: colors.hover,
+    border: colors.rule,
+    text: colors.textPrimary,
+  },
+  ghost: {
+    bg: 'transparent',
+    hover: colors.hover,
+    border: colors.ruleStrong,
+    text: colors.textSecondary,
+  },
+  danger: {
+    bg: colors.surface,
+    hover: colors.dangerSoft,
+    border: colors.danger,
+    text: colors.danger,
+  },
+  };
+}
 
 export function PixelButton({
   label,
@@ -43,66 +69,57 @@ export function PixelButton({
   disabled = false,
   style,
 }: Props) {
-  const palette = TONES[tone];
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const palette = tonesFor(colors)[tone];
+  const { hovered, bind } = useHover();
+  const scale = useSharedValue(1);
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.base,
-        {
-          backgroundColor: palette.bg,
-          borderColor: palette.border,
-          // Basınca gölge kadar aşağı kayıyor, tuşa basılmış gibi dursun.
-          transform: [{ translateY: pressed ? 3 : 0 }],
-        },
-        disabled && styles.disabled,
-        style,
-      ]}
-    >
-      {({ pressed }) => (
-        <>
-          <View
-            style={[
-              styles.shadow,
-              { backgroundColor: palette.border },
-              pressed && styles.shadowPressed,
-            ]}
-          />
-          <View style={styles.row}>
-            {icon ? <Text style={styles.icon}>{icon}</Text> : null}
-            <Text style={[styles.label, { color: palette.text }]}>{label}</Text>
-          </View>
-        </>
-      )}
-    </Pressable>
+    <Animated.View style={[animated, style]}>
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        {...bind}
+        onPressIn={() => {
+          scale.value = withSpring(0.96, springs.settle);
+        }}
+        onPressOut={() => {
+          scale.value = withSpring(1, springs.enter);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[
+          styles.base,
+          {
+            backgroundColor: hovered && !disabled ? palette.hover : palette.bg,
+            borderColor: palette.border,
+          },
+          disabled && styles.disabled,
+        ]}
+      >
+        {icon ? <Text style={styles.icon}>{icon}</Text> : null}
+        <Text style={[styles.label, { color: palette.text }]}>{label}</Text>
+      </Pressable>
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   base: {
-    borderWidth: borders.thick,
-    borderRadius: radii.sm,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    gap: spacing.xs + 2,
+    borderWidth: borders.width,
+    borderRadius: radii.xs,
+    paddingVertical: spacing.sm - 1,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  shadow: {
-    position: 'absolute',
-    left: -borders.thick,
-    right: -borders.thick,
-    bottom: -6,
-    height: 6,
-    borderBottomLeftRadius: radii.sm,
-    borderBottomRightRadius: radii.sm,
-  },
-  shadowPressed: { opacity: 0 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs + 2 },
-  icon: { fontSize: 15 },
-  label: { ...typography.heading },
+  icon: { fontSize: 14, lineHeight: 20 },
+  label: { ...typography.ui },
   disabled: { opacity: 0.45 },
-});
+}));

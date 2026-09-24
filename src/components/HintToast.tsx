@@ -11,8 +11,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { colors, elevation, radii, spacing, typography } from '../theme';
+import { radii, spacing, typography } from '../theme';
 import { durations, easings } from '../theme/motion';
+import { makeStyles } from '../theme/ThemeProvider';
 
 interface Props {
   message: string | null;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
+  const styles = useStyles();
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -58,23 +60,25 @@ export function HintToast({ message, onHide, durationMs = 2200 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, elevation }) => ({
   noHit: { pointerEvents: 'none' },
-  // Balon koyu kaldı, açık zeminde en çok o ayrışıyor. Kenarlığa gerek yok.
+  // Koyu gri balon, açık zeminde daha iyi seçiliyor.
   toast: {
     position: 'absolute',
     left: spacing.lg,
     right: spacing.lg,
     bottom: spacing.lg,
-    backgroundColor: colors.bark,
-    borderRadius: radii.md,
+    alignSelf: 'center',
+    maxWidth: 420,
+    backgroundColor: colors.toast,
+    borderRadius: radii.sm,
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
     ...elevation.overlay,
   },
   text: {
     ...typography.body,
-    color: colors.textOnDark,
+    color: colors.onToast,
     textAlign: 'center',
   },
-});
+}));

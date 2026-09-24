@@ -101,6 +101,22 @@ export const MIGRATIONS: Migration[] = [
        WHERE content IS NOT NULL AND TRIM(content) <> '';
     `,
   },
+  {
+    version: 3,
+    label: 'favorites-and-preferences',
+    statements: `
+      -- Kenar çubuğundaki Favoriler. Yıldızlanma anı, sıralama da buna göre.
+      -- Ot saatine dokunmuyor, o yüzden last_tended_at'ten ayrı.
+      ALTER TABLE notes ADD COLUMN favorited_at INTEGER;
+
+      -- Anahtar-değer tercihler (şimdilik tema). settings tek satırlık ve
+      -- time-skip'e ait, oraya sütun eklemek istemedim.
+      CREATE TABLE IF NOT EXISTS preferences (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `,
+  },
   // Yeni sürümler buraya. Yayınlanmış kayıtlara dokunmuyoruz.
 ];
 

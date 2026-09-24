@@ -6,25 +6,34 @@
  * jestler var. Kendi useNotes() çağrısı yok, yoksa aynı sorgu kenar çubuğuyla
  * birlikte iki kere koşuyor.
  *
- * Notların ardına hep boş parsel ekleniyor. Ekim başlıktaki bir butonla değil,
- * boş toprağa dokunarak yapılıyor.
+ * En sonda hep bir "Yeni tohum" kartı var.
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyPlot } from '../components/EmptyPlot';
 import { NoteCard } from '../components/NoteCard';
+import { DatabaseHeader, type ViewTab } from '../components/ui/DatabaseHeader';
+import { Tag } from '../components/ui/Tag';
 import { devAgeNotes } from '../db/repositories/notes';
 import { DAY } from '../game/config';
 import { resolveStage, STAGE_VISUALS, type VisualStage } from '../game/stages';
 import { runTimeSkip } from '../game/timeSkip';
 import { useFarm } from '../providers/FarmProvider';
-import { borders, colors, radii, spacing, typography } from '../theme';
-import { STAGE_COLORS } from '../theme/stageColors';
+import { borders, radii, spacing, typography } from '../theme';
 import type { TodoCount } from '../db/repositories/blocks';
+import type { FieldTab } from '../navigation/views';
 import type { Note } from '../types';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
-const GRID_PADDING = spacing.md;
+// Tarla sayfasındaki sekmeler
+export const FIELD_TABS: ViewTab<FieldTab>[] = [
+  { key: 'farm', icon: 'grid', label: 'Galeri' },
+  { key: 'list', icon: 'list', label: 'Tablo' },
+  { key: 'board', icon: 'columns', label: 'Pano' },
+];
+
+const GRID_PADDING = spacing.xl;
 /**
  * Tarlayı telefon ölçüsüne göre tasarladım, parselin hedef ve en büyük kenarı
  * sabit. Sütun sayısını genişlikten hesaplıyoruz, artan yer parselleri şişirmek
@@ -35,13 +44,8 @@ const TARGET_TILE = 150;
 const MAX_TILE = 200;
 const MIN_COLUMNS = 2;
 const MAX_COLUMNS = 5;
-/** Tarlanın sonunda kaç sıra boş toprak kalsın. Ekim buradan yapılıyor. */
-const SPARE_ROWS = 1;
 
-/**
- * Izgaranın bir hücresi. Boş parseller veriden değil düzenden geldiği için
- * nota değil hücreye bakan bir tip kullanıyoruz.
- */
+// Izgaradaki bir hücre. Ya bir not ya da sondaki yeni tohum kartı.
 type Cell =
   | { key: string; kind: 'note'; note: Note }
   | { key: string; kind: 'empty' };
@@ -55,6 +59,7 @@ interface Props {
   onHarvest: (id: number) => void;
   onBlocked: () => void;
   onAdd: () => void;
+  onSelectTab: (tab: FieldTab) => void;
 }
 
 export function FarmView({
@@ -66,7 +71,9 @@ export function FarmView({
   onHarvest,
   onBlocked,
   onAdd,
+  onSelectTab,
 }: Props) {
+  const styles = useStyles();
   const { timeSkip, dismissTimeSkip, notifyScheduleChanged } = useFarm();
   /**
    * Izgara pencereyi değil kendi kabının genişliğini ölçüyor. Kenar çubuğu
@@ -103,24 +110,15 @@ export function FarmView({
     return base;
   }, [notes, now, labor]);
 
-  /**
-   * Notlar + boş parseller. Son sırayı tamamlayıp üstüne bir sıra daha
-   * ekliyoruz ki ekilecek boş toprak hiç bitmesin.
-   */
   const cells = useMemo(() => {
     const list: Cell[] = notes.map((note) => ({
       key: `note-${note.id}`,
       kind: 'note',
       note,
     }));
-    const remainder = list.length % columns;
-    const spare =
-      (remainder === 0 ? 0 : columns - remainder) + SPARE_ROWS * columns;
-    for (let i = 0; i < spare; i += 1) {
-      list.push({ key: `empty-${i}`, kind: 'empty' });
-    }
+    list.push({ key: 'new', kind: 'empty' });
     return list;
-  }, [notes, columns]);
+  }, [notes]);
 
   /** Dev aracı: tarlayı bir gün yaşlandırıp simülasyonu zorla çalıştırıyor. */
   const handleAgeField = useCallback(async () => {
@@ -143,9 +141,70 @@ export function FarmView({
           onBlocked={onBlocked}
         />
       ) : (
-        <EmptyPlot size={tileSize} index={index} onPress={onAdd} />
+        <EmptyPlot size={tileSize} onPress={onAdd} />
       ),
     [now, labor, tileSize, onOpen, onTend, onHarvest, onBlocked, onAdd],
+  );
+
+  // Başlığı da listenin içine koydum ki kartlarla birlikte kaysın.
+  const header = (
+    <View style={styles.header}>
+      <DatabaseHeader
+        icon="🌾"
+        title="Tarla"
+        description={
+          notes.length > 0
+            ? `${notes.length} tohum toprakta`
+            : 'Boş bir parsele dokun, ilk tohumu ek'
+        }
+        tabs={FIELD_TABS}
+        activeTab="farm"
+        onSelectTab={onSelectTab}
+        onNew={onAdd}
+      >
+        <View style={styles.statRow}>
+          <StatChip stage="planted" count={counts.planted} />
+          <StatChip stage="growing" count={counts.growing} />
+          <StatChip stage="harvestable" count={counts.harvestable} />
+          <StatChip stage="weedy" count={counts.weedy} />
+        </View>
+
+        {timeSkip?.didRun ? (
+          <Pressable
+            onPress={dismissTimeSkip}
+            style={({ pressed }) => [
+              styles.banner,
+              pressed ? styles.pressedSurface : null,
+            ]}
+          >
+            <Text style={styles.bannerIcon}>⏳</Text>
+            <View style={styles.bannerBody}>
+              <Text style={styles.bannerTitle}>
+                {timeSkip.elapsedDays > 0
+                  ? `${timeSkip.elapsedDays} gün yoktun`
+                  : 'Bir süredir uğramamıştın'}
+              </Text>
+              <Text style={styles.bannerText}>
+                {timeSkip.grownNoteIds.length} ürün büyüdü ·{' '}
+                {timeSkip.weededNoteIds.length} parseli ot bastı. Kapatmak için dokun.
+              </Text>
+            </View>
+          </Pressable>
+        ) : null}
+
+        {__DEV__ ? (
+          <Pressable
+            onPress={handleAgeField}
+            style={({ pressed }) => [
+              styles.devButton,
+              pressed ? styles.pressedSurface : null,
+            ]}
+          >
+            <Text style={styles.devText}>⏩ Zaman makinesi (+1 gün)</Text>
+          </Pressable>
+        ) : null}
+      </DatabaseHeader>
+    </View>
   );
 
   // Ölçüm gelmeden çizersek bir kare yanlış sütun sayısıyla çiziyoruz.
@@ -163,58 +222,6 @@ export function FarmView({
       style={styles.root}
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
     >
-      <View style={styles.header}>
-        <View style={[styles.headerInner, { maxWidth: fieldWidth }]}>
-          <View style={styles.headerTitleBlock}>
-            <Text style={styles.title}>Tarla</Text>
-            <Text style={styles.subtitle}>
-              {notes.length > 0
-                ? `${notes.length} tohum toprakta`
-                : 'Boş bir parsele dokun, ilk tohumu ek'}
-            </Text>
-          </View>
-
-          <View style={styles.statRow}>
-            <StatChip stage="planted" count={counts.planted} />
-            <StatChip stage="growing" count={counts.growing} />
-            <StatChip stage="harvestable" count={counts.harvestable} />
-            <StatChip stage="weedy" count={counts.weedy} />
-          </View>
-
-          {timeSkip?.didRun ? (
-            <Pressable
-              onPress={dismissTimeSkip}
-              style={({ pressed }) => [
-                styles.banner,
-                pressed ? styles.pressedSurface : null,
-              ]}
-            >
-              <Text style={styles.bannerTitle}>
-                ⏳ {timeSkip.elapsedDays > 0
-                  ? `${timeSkip.elapsedDays} gün yoktun`
-                  : 'Bir süredir uğramamıştın'}
-              </Text>
-              <Text style={styles.bannerBody}>
-                {timeSkip.grownNoteIds.length} ürün büyüdü ·{' '}
-                {timeSkip.weededNoteIds.length} parseli ot bastı — dokun ve kapat
-              </Text>
-            </Pressable>
-          ) : null}
-
-          {__DEV__ ? (
-            <Pressable
-              onPress={handleAgeField}
-              style={({ pressed }) => [
-                styles.devButton,
-                pressed ? styles.pressedSurface : null,
-              ]}
-            >
-              <Text style={styles.devText}>⏩ Zaman makinesi (+1 gün)</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
       <FlatList
         key={columns}
         data={cells}
@@ -225,6 +232,7 @@ export function FarmView({
         contentContainerStyle={styles.grid}
         columnWrapperStyle={styles.column}
         showsVerticalScrollIndicator={false}
+        ListHeaderComponent={header}
       />
     </View>
   );
@@ -235,65 +243,53 @@ export function FarmView({
  * Dört çip yan yana gelince dört ayrı kutu yerine tek satır gibi duruyor.
  */
 function StatChip({ stage, count }: { stage: VisualStage; count: number }) {
+  const { stages } = useTheme();
   const visual = STAGE_VISUALS[stage];
   return (
-    <View style={styles.chip}>
-      <View style={[styles.chipDot, { backgroundColor: STAGE_COLORS[stage].accent }]} />
-      <Text style={styles.chipText}>
-        {visual.emoji} {count}
-      </Text>
-    </View>
+    <Tag
+      label={`${visual.label} ${count}`}
+      color={stages[stage].tag}
+    />
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   root: { flex: 1, backgroundColor: colors.ground },
-  // Başlık şeridini altındaki ince çizgi ayırıyor, dolgu farkı değil.
-  // Kalın kenarlık artık sadece parsellerde.
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: borders.hairline,
-    borderBottomColor: colors.rule,
+  header: { paddingBottom: spacing.lg },
+  statRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+    marginTop: spacing.md,
   },
-  /** Zemin tam genişlikte kalıyor, içerik ızgarayla aynı hizaya oturuyor. */
-  headerInner: { width: '100%', alignSelf: 'center', gap: spacing.md },
-  headerTitleBlock: { flex: 1, gap: 2 },
-  title: { ...typography.display, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textMuted },
-  statRow: { flexDirection: 'row', gap: spacing.lg, flexWrap: 'wrap' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  chipDot: { width: 6, height: 6, borderRadius: 3 },
-  chipText: { ...typography.caption, color: colors.textSecondary },
+  // gri kutu, solda simge
   banner: {
+    flexDirection: 'row',
+    gap: spacing.sm,
     backgroundColor: colors.surfaceSunken,
-    borderRadius: radii.md,
+    borderRadius: radii.xs,
     padding: spacing.md,
-    gap: 2,
+    marginTop: spacing.md,
   },
+  bannerIcon: { fontSize: 18, lineHeight: 22 },
+  bannerBody: { flex: 1, gap: 2 },
   /** Basılabilir her yüzeyde aynı geri bildirim: zemin koyulaşıyor. */
-  pressedSurface: { backgroundColor: colors.rule },
-  bannerTitle: { ...typography.heading, color: colors.textPrimary },
-  bannerBody: { ...typography.caption, color: colors.textMuted },
+  pressedSurface: { backgroundColor: colors.hover },
+  bannerTitle: { ...typography.ui, color: colors.textPrimary },
+  bannerText: { ...typography.body, color: colors.textSecondary },
   devButton: {
     alignSelf: 'flex-start',
     borderWidth: borders.width,
     borderStyle: 'dashed',
     borderColor: colors.ruleStrong,
-    borderRadius: radii.sm,
+    borderRadius: radii.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
+    marginTop: spacing.md,
   },
-  devText: {
-    ...typography.caption,
-    fontSize: 10,
-    lineHeight: 14,
-    color: colors.textMuted,
-  },
+  devText: { ...typography.caption, color: colors.textMuted },
   list: { flex: 1, width: '100%', alignSelf: 'center' },
   /** Parseller ayrı kartlar, aradaki boşluk ızgarayı ferahlatıyor. */
   grid: { paddingBottom: spacing.xxl, gap: spacing.sm },
   column: { justifyContent: 'flex-start', gap: spacing.sm },
-});
+}));

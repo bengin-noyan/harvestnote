@@ -1,78 +1,255 @@
 /**
  * Tasarım değerleri.
  *
- * v2 yönü: kağıt önde, toprak arkada. Kabuk (ekran zeminleri, başlıklar,
- * paneller) açık renk ve tipografi ağırlıklı. Toprak paletini silmedim ama
- * artık zemin değil, yazı rengi ve oyun yüzeyi olarak duruyor. Parseller hâlâ
- * koyu toprak kartlar, kağıdın üstünde daha iyi ayrışıyorlar.
+ * Açık ve koyu iki palet var, ikisinin anahtarları aynı. Bileşenler rengi
+ * ThemeProvider'daki useTheme() ya da makeStyles() ile alıyor. Burada sabit
+ * bir colors export'u bilerek yok, olsaydı tema değişince o yerler eski
+ * renkte kalırdı.
  *
- * Ekstra kütüphane yok, hiyerarşiyi renkten çok tipografi ve boşluk kuruyor.
+ * Toprak renkleri bitki ve kart kapakları için duruyor. Boşluk, köşe ve yazı
+ * boyutları temaya göre değişmiyor.
  */
 import { Platform, StyleSheet } from 'react-native';
 
-export const colors = {
-  /* ---------------------------------------------------------------- */
-  /* Kağıt - uygulama kabuğu                                          */
-  /* ---------------------------------------------------------------- */
-  /** Ekran zemini. Düz gri değil, toprağa doğru hafif kırık. */
-  ground: '#faf8f5',
-  /** Kart, panel, başlık şeridi. */
-  surface: '#ffffff',
-  /** Girinti hissi veren yüzey: metin kutusu, sekme zemini, banner. */
-  surfaceSunken: '#f2eee8',
-  /** Ayraç çizgisi. Kalın kenarlığın yerine geçti. */
-  rule: '#e6dfd4',
-  /** Vurgulu ayraç / pasif kenarlık. */
-  ruleStrong: '#d5cabb',
+import type { VisualStage } from '../game/stages';
 
-  /* ---------------------------------------------------------------- */
-  /* Toprak - oyun yüzeyi ve mürekkep                                 */
-  /* ---------------------------------------------------------------- */
+export type Scheme = 'light' | 'dark';
+
+export interface ThemeColors {
+  /* Kabuk */
+  ground: string;
+  surface: string;
+  sidebar: string;
+  surfaceSunken: string;
+  hover: string;
+  selected: string;
+  rule: string;
+  ruleStrong: string;
+  // menü ve kart zemini, koyu temada sayfadan biraz açık
+  popover: string;
+  card: string;
+  accent: string;
+  accentPressed: string;
+  accentSoft: string;
+  onAccent: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  danger: string;
+  dangerSoft: string;
+  backdrop: string;
+  toast: string;
+  onToast: string;
+
+  /* Oyun yüzeyi */
+  bark: string;
+  soilDeep: string;
+  soil: string;
+  soilLight: string;
+  furrow: string;
+  grass: string;
+  leaf: string;
+  leafLight: string;
+  leafDeep: string;
+  gold: string;
+  goldLight: string;
+  goldDeep: string;
+  weed: string;
+  weedDeep: string;
+  withered: string;
+  parchment: string;
+  parchmentDark: string;
+  textOnDark: string;
+  textOnDarkMuted: string;
+}
+
+const game = {
   bark: '#241a12',
   soilDeep: '#2f2118',
   soil: '#4a3527',
   soilLight: '#6b4c37',
   furrow: '#3a2a1e',
-
-  /* Bitki */
   grass: '#3f6b32',
   leaf: '#6aa84f',
   leafLight: '#9ccc65',
-  /**
-   * Açık zeminde okunan yeşil. `leaf` kağıt üstünde 2.2 kontrasta düşüyor,
-   * aksan rengi gereken her yerde bunu kullanın.
-   */
-  leafDeep: '#4f7d3a',
-
-  /* Olgun / hasat */
   gold: '#e0a828',
   goldLight: '#ffd76e',
   goldDeep: '#a8761a',
-
-  /* Yabani ot */
   weed: '#42552f',
   weedDeep: '#1c2416',
-
-  /* Kiler */
   withered: '#8a7a5f',
   parchment: '#f7efe0',
   parchmentDark: '#e6d7bd',
-
-  /* ---------------------------------------------------------------- */
-  /* Metin                                                            */
-  /* ---------------------------------------------------------------- */
-  /** Kağıt üstünde gövde ve başlık. Toprağın en koyu tonu yazı rengi oldu. */
-  textPrimary: '#241a12',
-  /** İkincil metin: alt başlık, açıklama. */
-  textSecondary: '#4d3b2c',
-  /** Üçüncül: etiket, ipucu, zaman damgası. */
-  textMuted: '#7a6650',
-  /** Toprak yüzeyler üzerinde (parsel, ipucu balonu). */
   textOnDark: '#f3e5c8',
   textOnDarkMuted: '#bda887',
+};
 
-  danger: '#b4472f',
-} as const;
+// Renkleri Notion'a yakın tuttum.
+const lightColors: ThemeColors = {
+  ground: '#ffffff',
+  surface: '#ffffff',
+  sidebar: '#f8f8f7',
+  surfaceSunken: '#f7f6f3',
+  hover: '#efefed',
+  selected: '#ebebea',
+  rule: '#e9e9e7',
+  ruleStrong: '#d3d1cb',
+  popover: '#ffffff',
+  card: '#ffffff',
+  accent: '#2383e2',
+  accentPressed: '#0077d4',
+  accentSoft: '#e7f3f8',
+  onAccent: '#ffffff',
+  textPrimary: '#37352f',
+  textSecondary: '#5f5e5b',
+  textMuted: '#9b9a97',
+  danger: '#d44c47',
+  dangerSoft: '#fdebec',
+  backdrop: '#0f0f0f',
+  toast: '#2f2f2f',
+  onToast: '#ffffff',
+  ...game,
+  // Açık zeminde okunan yeşil. leaf kağıt üstünde 2.2 kontrasta düşüyor.
+  leafDeep: '#4f7d3a',
+};
+
+const darkColors: ThemeColors = {
+  ground: '#191919',
+  surface: '#191919',
+  sidebar: '#202020',
+  surfaceSunken: '#252525',
+  hover: '#2a2a2a',
+  selected: '#2c2c2c',
+  rule: '#2f2f2f',
+  ruleStrong: '#434343',
+  popover: '#252525',
+  card: '#202020',
+  accent: '#2383e2',
+  accentPressed: '#3a92e6',
+  accentSoft: '#1c3246',
+  onAccent: '#ffffff',
+  textPrimary: '#d4d4d4',
+  textSecondary: '#a3a3a3',
+  textMuted: '#7f7f7f',
+  danger: '#e0645c',
+  dangerSoft: '#3a2322',
+  backdrop: '#000000',
+  toast: '#373737',
+  onToast: '#f0f0f0',
+  ...game,
+  // Koyu zeminde koyu yeşil kayboluyor, bir ton açığını kullanıyoruz.
+  leafDeep: '#6aa84f',
+};
+
+// Etiket renkleri. Aşama ve kalite etiketleri bunları kullanıyor.
+export type TagColor =
+  | 'gray'
+  | 'brown'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'red';
+
+export type TagPalette = Record<TagColor, { bg: string; text: string }>;
+
+const lightTags: TagPalette = {
+  gray: { bg: '#e3e2e0', text: '#32302c' },
+  brown: { bg: '#eee0da', text: '#442a1e' },
+  orange: { bg: '#fadec9', text: '#49290e' },
+  yellow: { bg: '#fdecc8', text: '#402c1b' },
+  green: { bg: '#dbeddb', text: '#1c3829' },
+  blue: { bg: '#d3e5ef', text: '#183347' },
+  red: { bg: '#ffe2dd', text: '#5d1715' },
+};
+
+const darkTags: TagPalette = {
+  gray: { bg: '#3c3c3c', text: '#e0e0e0' },
+  brown: { bg: '#603b2c', text: '#f0e2dc' },
+  orange: { bg: '#854c1d', text: '#fbe6d4' },
+  yellow: { bg: '#89632a', text: '#fcefd6' },
+  green: { bg: '#2b593f', text: '#dcefe3' },
+  blue: { bg: '#28456c', text: '#dbe8f6' },
+  red: { bg: '#6e3630', text: '#fbe1dd' },
+};
+
+// Aşama renkleri. accent nokta ve çubuklar için, tag etiket için.
+export interface StagePalette {
+  accent: string;
+  tag: TagColor;
+  // kart kapağının zemini
+  cover: string;
+}
+
+type StagePalettes = Record<VisualStage, StagePalette>;
+
+const lightStages: StagePalettes = {
+  planted: { accent: '#9f6b53', tag: 'brown', cover: '#f6efe9' },
+  growing: { accent: '#448361', tag: 'green', cover: '#edf5ee' },
+  harvestable: { accent: '#cb912f', tag: 'yellow', cover: '#fcf3df' },
+  weedy: { accent: '#d44c47', tag: 'red', cover: '#fbeceb' },
+};
+
+const darkStages: StagePalettes = {
+  planted: { accent: '#ba856f', tag: 'brown', cover: '#2a2320' },
+  growing: { accent: '#529e72', tag: 'green', cover: '#1f2a23' },
+  harvestable: { accent: '#ca9849', tag: 'yellow', cover: '#2e2719' },
+  weedy: { accent: '#df5452', tag: 'red', cover: '#2e1f1e' },
+};
+
+// Gölgeler. Android'de gölge sadece arka plan rengi olan view'da çıkıyor.
+// Koyu temada gölge zor görünüyor, orada opaklığı artırdım.
+function elevationFor(scheme: Scheme) {
+  const dark = scheme === 'dark';
+  return {
+    card: {
+      shadowColor: '#000000',
+      shadowOpacity: dark ? 0.3 : 0.06,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 1 },
+      elevation: 1,
+    },
+    overlay: {
+      shadowColor: '#000000',
+      shadowOpacity: dark ? 0.5 : 0.18,
+      shadowRadius: 20,
+      shadowOffset: { width: 0, height: -6 },
+      elevation: 14,
+    },
+    popover: {
+      shadowColor: '#000000',
+      shadowOpacity: dark ? 0.45 : 0.12,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 8,
+    },
+  } as const;
+}
+
+export interface Theme {
+  scheme: Scheme;
+  colors: ThemeColors;
+  tags: TagPalette;
+  stages: StagePalettes;
+  elevation: ReturnType<typeof elevationFor>;
+}
+
+export const themes: Record<Scheme, Theme> = {
+  light: {
+    scheme: 'light',
+    colors: lightColors,
+    tags: lightTags,
+    stages: lightStages,
+    elevation: elevationFor('light'),
+  },
+  dark: {
+    scheme: 'dark',
+    colors: darkColors,
+    tags: darkTags,
+    stages: darkStages,
+    elevation: elevationFor('dark'),
+  },
+};
 
 export const spacing = {
   xs: 4,
@@ -83,11 +260,9 @@ export const spacing = {
   xxl: 32,
 } as const;
 
-/**
- * Köşe yuvarlamaları. Kabuk yumuşadı ama parseller hâlâ `md` kullanıyor,
- * toprak kart panelden biraz daha keskin kalsın istedim.
- */
 export const radii = {
+  // satır, düğme ve etiketler için
+  xs: 4,
   sm: 6,
   md: 10,
   lg: 16,
@@ -95,70 +270,33 @@ export const radii = {
 } as const;
 
 export const borders = {
-  /**
-   * Ayraçlar için, cihazın çizebildiği en ince çizgi. Bu düzende hiyerarşiyi
-   * kenarlık değil boşluk kuruyor, çizgi sadece ayırıyor.
-   */
+  // cihazın çizebildiği en ince çizgi
   hairline: StyleSheet.hairlineWidth,
   width: 1,
-  /** Kalın kenarlık sadece oyun yüzeylerinde kaldı (parsel, kiler kartı). */
   thick: 2,
 } as const;
 
-/**
- * Gölge katmanları. Açık zeminde gölge koyu paletteki kadar çalışmıyor,
- * opaklığı düşürüp yarıçapı artırdım. Artık ayırıcı değil, sadece yüzeyin
- * kağıttan bir tık yukarıda olduğunu gösteriyor.
- *
- * Android'de gölge sadece zemini olan view'da çiziliyor, `elevation` verdiğin
- * her yüzeye `backgroundColor` da lazım.
- */
-export const elevation = {
-  /** Izgaradaki parsel, kiler kartı. */
-  card: {
-    shadowColor: '#3a2a1e',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  /** Ekranın üstüne çıkan yüzeyler: panel, ipucu balonu. */
-  overlay: {
-    shadowColor: '#241a12',
-    shadowOpacity: 0.22,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -6 },
-    elevation: 14,
-  },
-} as const;
-
-/**
- * Tipografi ölçeği. Her basamak kendi lineHeight'ını taşıyor, yoksa iki satıra
- * düşen başlıklar platformdan platforma değişiyordu.
- *
- * fontSize'ı ezen bir stil lineHeight'ı da ezmeli, yoksa küçük metin kendinden
- * büyük bir satır kutusunda yüzüyor.
- *
- * v2'de ölçeği iki uçtan açtım: `display` ekran başlıkları, `bodyLarge`
- * okunacak metin için (blok editörü onu kullanıyor). Başlıklarda harf aralığı
- * negatif, büyük puntoda daha sakin duruyor. `caption` pozitif kaldı, küçük
- * puntoda nefes gerekiyor.
- */
+// Yazı boyutları. Her birinin kendi lineHeight'ı var, yoksa iki satıra düşen
+// başlıklar platforma göre farklı görünüyordu. fontSize'ı değiştirirsen
+// lineHeight'ı da değiştir, yoksa yazı kutunun içinde kayıyor.
 export const typography = {
-  display: { fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5 },
-  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', letterSpacing: -0.3 },
-  heading: { fontSize: 16, lineHeight: 21, fontWeight: '700', letterSpacing: -0.1 },
-  /** Okunacak metin, satır aralığı ferah. Blok editörünün paragrafı bu. */
-  bodyLarge: { fontSize: 16, lineHeight: 26, fontWeight: '400' },
-  /**
-   * Notun içindeki başlık. `title` ekran başlığı için 22 punto ve panelin
-   * başlığıyla aynı boyda blok başlığı koyunca hiyerarşi düzleşiyordu.
-   */
-  blockHeading: { fontSize: 19, lineHeight: 26, fontWeight: '800', letterSpacing: -0.2 },
-  body: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
-  caption: { fontSize: 11, lineHeight: 15, fontWeight: '600', letterSpacing: 0.4 },
-  /** Büyük harfli alan etiketi. */
-  label: { fontSize: 11, lineHeight: 15, fontWeight: '700', letterSpacing: 0.9 },
+  // sayfa başlığı
+  pageTitle: { fontSize: 40, lineHeight: 48, fontWeight: '700', letterSpacing: -0.4 },
+  display: { fontSize: 30, lineHeight: 38, fontWeight: '700', letterSpacing: -0.3 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '700', letterSpacing: -0.2 },
+  // sayfa içi bölüm başlıkları
+  section: { fontSize: 18, lineHeight: 24, fontWeight: '600', letterSpacing: -0.1 },
+  heading: { fontSize: 16, lineHeight: 22, fontWeight: '600' },
+  // not metni
+  bodyLarge: { fontSize: 16, lineHeight: 24, fontWeight: '400' },
+  // not içindeki başlık bloğu
+  blockHeading: { fontSize: 24, lineHeight: 31, fontWeight: '600', letterSpacing: -0.2 },
+  body: { fontSize: 14, lineHeight: 20, fontWeight: '400' },
+  // kenar çubuğu ve menüler, body'nin biraz kalını
+  ui: { fontSize: 14, lineHeight: 20, fontWeight: '500' },
+  caption: { fontSize: 12, lineHeight: 16, fontWeight: '400' },
+  // "Çalışma alanı" gibi küçük başlıklar
+  label: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
 } as const;
 
 /**
@@ -173,12 +311,7 @@ export const fonts = {
   }),
 } as const;
 
-/**
- * Boyu sabit olan yüzeylerde sistem yazı büyütmesinin üst sınırı.
- *
- * Parselin yüksekliği ızgaradan geliyor, başlığı da numberOfLines={2} ile
- * sınırlı. Sistem yazısı %200'e çıkınca metin kutuya sığmayıp kırpılıyor.
- * Okunan yüzeylerde (not detayı, kiler kartı) sınır koymuyoruz,
- * erişilebilirlik ayarı orada sonuna kadar çalışsın.
- */
+// Kartlar gibi boyu sabit yerlerde sistem yazı büyütmesine sınır. %200'de
+// yazı karta sığmayıp kesiliyordu. Not sayfası gibi yerlerde sınır yok.
 export const DENSE_FONT_SCALE_CAP = 1.3;
+

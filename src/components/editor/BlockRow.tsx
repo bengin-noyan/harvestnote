@@ -10,7 +10,7 @@
  * Pressable koymak da aynı sebeple çalışmıyor. Tutamak ayrıca "bloğu sil"in
  * garantili yolu, Android'de boş kutuda Backspace tetiklenmeyebiliyor.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -25,9 +25,19 @@ import {
   type TextStyle,
 } from 'react-native';
 
-import { borders, colors, fonts, radii, spacing, typography } from '../../theme';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+import { borders, fonts, radii, spacing, typography } from '../../theme';
+import { durations, easings, springs } from '../../theme/motion';
 import type { BlockType, NoteBlock } from '../../types';
 import { BLOCK_META } from './blockMeta';
+import { makeStyles, useTheme } from '../../theme/ThemeProvider';
 
 interface Props {
   block: NoteBlock;
@@ -60,6 +70,9 @@ export function BlockRow({
   onToggleCheck,
   onOpenMenu,
 }: Props) {
+  const textStyles = useTextStyles();
+  const { colors } = useTheme();
+  const styles = useStyles();
   const meta = BLOCK_META[block.type];
   const done = block.type === 'todo' && block.checked;
 
@@ -124,7 +137,7 @@ export function BlockRow({
         onContentSizeChange={handleContentSize}
         style={[
           styles.input,
-          TEXT_STYLE[block.type],
+          textStyles[block.type],
           done ? styles.done : null,
           contentHeight !== null ? { height: contentHeight } : null,
           WEB_INPUT_RESET,
@@ -147,6 +160,34 @@ export function BlockRow({
   );
 }
 
+// İşaretleyince kutu bir an büyüyüp geri küçülüyor.
+function Checkbox({ checked }: { checked: boolean }) {
+  const styles = useStyles();
+  const scale = useSharedValue(1);
+  const first = useRef(true);
+  useEffect(() => {
+    // sayfa ilk açılırken oynamasın diye
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (checked) {
+      scale.value = withSequence(
+        withTiming(1.25, { duration: durations.fast, easing: easings.out }),
+        withSpring(1, springs.settle),
+      );
+    }
+  }, [checked, scale]);
+  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return (
+    <Animated.View
+      style={[styles.checkbox, checked ? styles.checkboxOn : null, style]}
+    >
+      {checked ? <Text style={styles.tick}>✓</Text> : null}
+    </Animated.View>
+  );
+}
+
 function Prefix({
   type,
   ordinal,
@@ -158,6 +199,7 @@ function Prefix({
   checked: boolean;
   onToggleCheck: () => void;
 }) {
+  const styles = useStyles();
   if (type === 'todo') {
     return (
       <Pressable
@@ -169,9 +211,7 @@ function Prefix({
         accessibilityState={{ checked }}
         accessibilityLabel={checked ? 'İşareti kaldır' : 'Yapıldı işaretle'}
       >
-        <View style={[styles.checkbox, checked ? styles.checkboxOn : null]}>
-          {checked ? <Text style={styles.tick}>✓</Text> : null}
-        </View>
+        <Checkbox checked={checked} />
       </Pressable>
     );
   }
@@ -207,7 +247,7 @@ const WEB_INPUT_RESET = Platform.OS === 'web'
   : null;
 
 /** Tür başına metin stili. Ölçekler theme'den geliyor. */
-const TEXT_STYLE: Record<BlockType, TextStyle> = {
+const useTextStyles = makeStyles(({ colors }): Record<BlockType, TextStyle> => ({
   paragraph: { ...typography.bodyLarge, color: colors.textPrimary },
   heading: { ...typography.blockHeading, color: colors.textPrimary },
   todo: { ...typography.bodyLarge, color: colors.textPrimary },
@@ -224,9 +264,9 @@ const TEXT_STYLE: Record<BlockType, TextStyle> = {
     fontFamily: fonts.mono,
     color: colors.textPrimary,
   },
-};
+}));
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   row: { flexDirection: 'row', alignItems: 'flex-start' },
   /** Alıntıyı soldaki çizgi anlatıyor, ayrı bir önek simgesi yok. */
   quoteRow: {
@@ -267,16 +307,17 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 18,
     height: 18,
-    borderRadius: radii.sm - 2,
-    borderWidth: borders.width,
-    borderColor: colors.ruleStrong,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: colors.textPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
   },
+  // işaretli kutu mavi
   checkboxOn: {
-    backgroundColor: colors.leafDeep,
-    borderColor: colors.leafDeep,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   tick: { color: colors.surface, fontSize: 12, lineHeight: 14, fontWeight: '800' },
   dividerRow: {
@@ -289,4 +330,4 @@ const styles = StyleSheet.create({
     height: borders.hairline,
     backgroundColor: colors.ruleStrong,
   },
-});
+}));

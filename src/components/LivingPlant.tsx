@@ -31,9 +31,10 @@ import Animated, {
 
 import { SEED_CATALOG } from '../game/config';
 import type { VisualStage } from '../game/stages';
-import { colors } from '../theme';
+import { themes } from '../theme';
 import { durations, easings } from '../theme/motion';
 import type { SeedType } from '../types';
+import { makeStyles } from '../theme/ThemeProvider';
 
 /** Bir salınımın tam turu. Nefes gibi, acelesi yok. */
 const SWAY_PERIOD_MS = 2800;
@@ -72,14 +73,17 @@ interface Props {
  * hasada kadar aynı yeşil. Büyümeyi zaten boy ve yapraklar anlatıyor, renk de
  * değişince fazla oluyordu.
  */
+const game = themes.light.colors;
+
 function palette(stage: VisualStage) {
   if (stage === 'weedy') {
-    return { stem: colors.weed, leaf: colors.weed, leafLight: colors.withered };
+    return { stem: game.weed, leaf: game.weed, leafLight: game.withered };
   }
-  return { stem: colors.grass, leaf: colors.leaf, leafLight: colors.leafLight };
+  return { stem: game.grass, leaf: game.leaf, leafLight: game.leafLight };
 }
 
 export function LivingPlant({ stage, progress, height, seed }: Props) {
+  const styles = useStyles();
   const reduced = useReducedMotion();
   const isWeedy = stage === 'weedy';
   const tone = palette(stage);
@@ -217,6 +221,7 @@ function Leaf({
   thickness: number;
   color: string;
 }) {
+  const styles = useStyles();
   const style = useAnimatedStyle(() => {
     // Eşikten sonra dar bir aralıkta açılıyor, sonrası sabit.
     const open = interpolate(
@@ -262,7 +267,7 @@ function Leaf({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   root: { alignItems: 'center', justifyContent: 'flex-end' },
   /**
    * Salınımın ekseni dipte. Çocuklar buna göre `bottom` ile konumlanıyor,
@@ -278,4 +283,4 @@ const styles = StyleSheet.create({
   stem: { borderRadius: 999 },
   leaf: { position: 'absolute', transformOrigin: 'left center' },
   fruit: { position: 'absolute', alignItems: 'center' },
-});
+}));

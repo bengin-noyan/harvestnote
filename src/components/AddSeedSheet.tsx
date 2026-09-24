@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { DEFAULT_SEED_TYPE, SEED_CATALOG } from '../game/config';
-import { borders, colors, radii, spacing, typography } from '../theme';
+import { borders, radii, spacing, typography } from '../theme';
 import type { CreateNoteInput, SeedType } from '../types';
 import { BottomSheet } from './BottomSheet';
 import { PixelButton } from './PixelButton';
 import { SeedPicker } from './SeedPicker';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   visible: boolean;
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function AddSeedSheet({ visible, onClose, onPlant }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [seedType, setSeedType] = useState<SeedType>(DEFAULT_SEED_TYPE);
@@ -109,11 +112,10 @@ export function AddSeedSheet({ visible, onClose, onPlant }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   label: {
     ...typography.label,
     color: colors.textMuted,
-    textTransform: 'uppercase',
     marginBottom: spacing.xs,
     marginTop: spacing.md,
   },
@@ -140,4 +142,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   actions: { marginTop: spacing.xl, marginBottom: spacing.md },
-});
+}));

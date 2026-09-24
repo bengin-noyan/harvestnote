@@ -13,6 +13,7 @@ import {
   harvestNote,
   listFieldNotes,
   plantSeed,
+  setFavorite,
   tendNote,
   updateNote,
 } from '../db/repositories/notes';
@@ -33,13 +34,16 @@ export interface UseNotesResult {
   harvest: (id: number) => Promise<void>;
   save: (id: number, input: UpdateNoteInput) => Promise<void>;
   remove: (id: number) => Promise<void>;
+  toggleFavorite: (id: number) => Promise<void>;
 }
 
 export function useNotes(): UseNotesResult {
   // Aşağıdaki beş yazma da zamanlama kanalını kullanıyor. Ekim yeni hatırlatma
   // açıyor, hasat ve silme kuruluyu iptal ediyor, ot temizleme ve düzenleme de
   // last_tended_at'i tazeleyip hatırlatmayı ileri kaydırıyor (bkz. updateNote).
-  const { revision, notifyScheduleChanged, status } = useFarm();
+  // toggleFavorite ot saatine dokunmadığı için notifyContentChanged kullanıyor.
+  const { revision, notifyScheduleChanged, notifyContentChanged, status } =
+    useFarm();
   const [notes, setNotes] = useState<Note[]>([]);
   const [labor, setLabor] = useState<Map<number, TodoCount>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -128,5 +132,32 @@ export function useNotes(): UseNotesResult {
     [notifyScheduleChanged],
   );
 
-  return { notes, labor, loading, reload, plant, tend, harvest, save, remove };
+  const toggleFavorite = useCallback(
+    async (id: number) => {
+      const target = notes.find((n) => n.id === id);
+      if (!target) return;
+      const next = target.favorited_at === null;
+      setNotes((prev) =>
+        prev.map((n) =>
+          n.id === id ? { ...n, favorited_at: next ? Date.now() : null } : n,
+        ),
+      );
+      await setFavorite(id, next);
+      notifyContentChanged();
+    },
+    [notes, notifyContentChanged],
+  );
+
+  return {
+    notes,
+    labor,
+    loading,
+    reload,
+    plant,
+    tend,
+    harvest,
+    save,
+    remove,
+    toggleFavorite,
+  };
 }

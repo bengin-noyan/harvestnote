@@ -1,7 +1,7 @@
-// Kilerdeki tek bir ürün. Kalite (golden / normal / withered) kartın
-// kenarlığını, zeminini ve rozetini belirliyor.
+// Kilerdeki tek bir ürün kartı.
+// Altın kalitedeki ürünlerin kenarı hafif parlıyor, ödül gibi hissettirsin diye.
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
@@ -11,49 +11,21 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { SEED_CATALOG } from '../game/config';
-import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { useHover } from '../hooks/useHover';
+import { borders, radii, spacing, typography, type TagColor } from '../theme';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 import type { HarvestQuality, InventoryItem } from '../types';
 import { formatDate, formatRelative } from '../utils/format';
+import { Icon } from './ui/Icon';
+import { Tag } from './ui/Tag';
 
-interface QualityStyle {
-  label: string;
-  badge: string;
-  bg: string;
-  border: string;
-  text: string;
-  muted: string;
-  glows: boolean;
-}
-
-export const QUALITY_STYLES: Record<HarvestQuality, QualityStyle> = {
-  golden: {
-    label: 'Altın',
-    badge: '⭐',
-    bg: '#fff4d6',
-    border: colors.gold,
-    text: colors.textPrimary,
-    muted: '#8a6a1f',
-    glows: true,
-  },
-  normal: {
-    label: 'Normal',
-    badge: '🧺',
-    // parchment yeni sayfa zeminine çok yakındı, kart ayrışsın diye değiştirdim.
-    bg: colors.surface,
-    border: colors.ruleStrong,
-    text: colors.textPrimary,
-    muted: colors.textMuted,
-    glows: false,
-  },
-  withered: {
-    label: 'Solmuş',
-    badge: '🥀',
-    bg: '#e6e0d2',
-    border: colors.withered,
-    text: '#5f5647',
-    muted: '#8a8171',
-    glows: false,
-  },
+export const QUALITY_META: Record<
+  HarvestQuality,
+  { label: string; tag: TagColor; glows: boolean }
+> = {
+  golden: { label: 'Altın', tag: 'yellow', glows: true },
+  normal: { label: 'Normal', tag: 'gray', glows: false },
+  withered: { label: 'Solmuş', tag: 'brown', glows: false },
 };
 
 interface Props {
@@ -62,7 +34,10 @@ interface Props {
 }
 
 export function InventoryCard({ item, onDiscard }: Props) {
-  const quality = QUALITY_STYLES[item.quality];
+  const styles = useStyles();
+  const { colors } = useTheme();
+  const { hovered, bind } = useHover();
+  const quality = QUALITY_META[item.quality];
   const seed = SEED_CATALOG[item.seed_type];
   const shimmer = useSharedValue(0);
 
@@ -74,11 +49,11 @@ export function InventoryCard({ item, onDiscard }: Props) {
   }, [quality.glows, shimmer]);
 
   const glowStyle = useAnimatedStyle(() => ({
-    opacity: 0.25 + shimmer.value * 0.55,
+    opacity: 0.2 + shimmer.value * 0.5,
   }));
 
   return (
-    <View style={[styles.card, { backgroundColor: quality.bg, borderColor: quality.border }]}>
+    <Pressable {...bind} style={[styles.card, hovered ? styles.cardHover : null]}>
       {quality.glows ? (
         <Animated.View style={[styles.glow, styles.noHit, glowStyle]} />
       ) : null}
@@ -88,73 +63,72 @@ export function InventoryCard({ item, onDiscard }: Props) {
       </View>
 
       <View style={styles.body}>
-        <Text style={[styles.title, { color: quality.text }]} numberOfLines={2}>
+        <Text style={styles.title} numberOfLines={1}>
           {item.title}
         </Text>
-        <Text style={[styles.meta, { color: quality.muted }]}>
+        <Text style={styles.meta} numberOfLines={1}>
           {seed?.label ?? item.seed_type} · {formatDate(item.harvested_at)} ·{' '}
           {formatRelative(item.harvested_at)}
         </Text>
-        <View style={[styles.badge, { borderColor: quality.border }]}>
-          <Text style={[styles.badgeText, { color: quality.muted }]}>
-            {quality.badge} {quality.label}
-            {seed ? ` · ${seed.value} puan` : ''}
-          </Text>
-        </View>
       </View>
+
+      <Tag
+        label={`${quality.label}${seed ? ` · ${seed.value} puan` : ''}`}
+        color={quality.tag}
+      />
 
       <Pressable
         onPress={() => onDiscard(item.id)}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={`${item.title} ürününü kilerden çıkar`}
-        style={styles.discard}
+        style={({ pressed }) => [
+          styles.discard,
+          pressed ? styles.discardPressed : null,
+          // Web'de üstüne gelince belirginleşiyor. Telefonda hover yok, orada hep açık.
+          { opacity: hovered || Platform.OS !== 'web' ? 1 : 0.45 },
+        ]}
       >
-        <Text style={[styles.discardText, { color: quality.muted }]}>✕</Text>
+        <Icon name="trash-2" size={15} color={colors.textMuted} />
       </Pressable>
-    </View>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, elevation }) => ({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    borderWidth: borders.thick,
-    borderRadius: radii.md,
-    padding: spacing.md,
+    backgroundColor: colors.card,
+    borderWidth: borders.hairline,
+    borderColor: colors.rule,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     overflow: 'hidden',
     ...elevation.card,
   },
+  cardHover: { backgroundColor: colors.hover },
   noHit: { pointerEvents: 'none' },
   glow: {
     ...StyleSheet.absoluteFill,
-    borderWidth: borders.thick,
-    borderColor: colors.goldLight,
+    borderWidth: 1.5,
+    borderColor: colors.gold,
     borderRadius: radii.sm,
   },
   emojiBox: {
-    width: 52,
-    height: 52,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: colors.surfaceSunken,
     borderRadius: radii.sm,
   },
-  emoji: { fontSize: 30 },
-  body: { flex: 1, gap: spacing.xs },
-  title: { ...typography.heading },
-  meta: { ...typography.caption },
-  badge: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 1,
-    marginTop: 2,
-  },
-  badgeText: { ...typography.caption, fontSize: 10, lineHeight: 14 },
-  discard: { padding: spacing.xs },
-  discardText: { fontSize: 16, fontWeight: '700' },
-});
+  emoji: { fontSize: 22 },
+  body: { flex: 1, gap: 2 },
+  title: { ...typography.ui, color: colors.textPrimary },
+  meta: { ...typography.caption, color: colors.textMuted },
+  discard: { padding: spacing.xs, borderRadius: radii.xs },
+  discardPressed: { backgroundColor: colors.hover },
+}));

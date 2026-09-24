@@ -181,6 +181,16 @@ export async function harvestNote(
   return { note, inventoryId, quality };
 }
 
+// Favoriye ekleyip çıkarıyor.
+// last_tended_at'i değiştirmiyorum, yoksa sadece yıldızlamak da ot sayacını sıfırlardı.
+export async function setFavorite(id: number, favorite: boolean): Promise<void> {
+  const db = await getDatabase();
+  await db.runAsync('UPDATE notes SET favorited_at = ? WHERE id = ?', [
+    favorite ? Date.now() : null,
+    id,
+  ]);
+}
+
 /**
  * Kalıcı silme. Kilerdeki kayıt duruyor, sadece original_note_id NULL oluyor
  * (ON DELETE SET NULL). Yani geçmiş hasat sayısı bozulmuyor.

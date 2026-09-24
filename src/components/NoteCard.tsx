@@ -1,10 +1,8 @@
 /**
- * Tarladaki tek bir parsel.
+ * Tarladaki not kartı.
  *
- * Parsel kendi kenarlığı ve köşesi olan bir kart, tarlaya karışmıyor. Zemin
- * çizgisi parseli ikiye bölüyor: üstte bitki, altta yazı. Bitki höyüğe basıyor
- * ve olgunlaştıkça büyüyor. Yani olgunluğu ayrı bir ilerleme çubuğu değil,
- * bitkinin boyu anlatıyor (bkz. LivingPlant).
+ * Üstte aşamanın renginde bir kapak var, bitki orada büyüyor. Olgunluğu ayrı
+ * bir çubukla göstermedim, bitkinin boyu zaten gösteriyor (bkz. LivingPlant).
  *
  * Jestler aşamaya göre değişiyor:
  *   weedy        yana kaydır  -> otlar kayıp gidiyor, tendNote çalışıyor
@@ -37,29 +35,23 @@ import {
   resolveStage,
   STAGE_VISUALS,
 } from '../game/stages';
-import {
-  colors,
-  DENSE_FONT_SCALE_CAP,
-  elevation,
-  radii,
-  spacing,
-  typography,
-} from '../theme';
+import { DENSE_FONT_SCALE_CAP, radii, spacing, typography } from '../theme';
 import { durations, easings, springs } from '../theme/motion';
 import type { Note } from '../types';
 import { LivingPlant } from './LivingPlant';
-import { PlotGround, plotMetrics } from './PlotGround';
+import { Icon } from './ui/Icon';
+import { Tag } from './ui/Tag';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 /** Otların temizlenmiş sayılması için gereken yatay mesafe. */
 const CLEAR_DISTANCE = 88;
 /** Hasat için gereken yukarı kaydırma mesafesi. */
 const HARVEST_DISTANCE = 64;
 
-/**
- * Bitkinin çizim kutusunun zemin üstü yüksekliğe oranı. Kutu sabit, büyüyen
- * şey kutunun içindeki bitki (LivingPlant sapı olgunlukla uzatıyor).
- */
-const PLANT_BOX_RATIO = 0.74;
+// Kapak kartın ne kadarını kaplasın, kalan yer başlık için.
+const COVER_RATIO = 0.6;
+// Bitkinin kutusu kapağın %80'i. Kutu sabit, içindeki bitki büyüyor.
+const PLANT_BOX_RATIO = 0.8;
 
 interface Props {
   note: Note;
@@ -85,6 +77,7 @@ function NoteCardComponent({
   onHarvest,
   onBlocked,
 }: Props) {
+  const styles = useStyles();
   const stage = resolveStage(note, now, undefined, labor);
   const visual = STAGE_VISUALS[stage];
   const isWeedy = stage === 'weedy';
@@ -92,9 +85,11 @@ function NoteCardComponent({
   const progress = maturityProgress(note, now, undefined, labor);
   const seed = SEED_CATALOG[note.seed_type];
 
-  const { ground, moundHeight } = plotMetrics(size);
-  const plantBox = Math.round(ground * PLANT_BOX_RATIO);
-  const glowSize = Math.round(size * 0.62);
+  const { stages, colors } = useTheme();
+  const cover = Math.round(size * COVER_RATIO);
+  const plantBox = Math.round(cover * PLANT_BOX_RATIO);
+  const glowSize = Math.round(size * 0.55);
+  const moundHeight = Math.max(6, Math.round(size * 0.05));
 
   const weedX = useSharedValue(0);
   const weedOpacity = useSharedValue(isWeedy ? 1 : 0);
@@ -273,19 +268,17 @@ function NoteCardComponent({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
-        style={[styles.plot, { width: size, height: size }, cardStyle]}
+        style={[styles.card, { width: size, height: size }, cardStyle]}
         accessibilityRole="button"
         accessibilityLabel={`${note.title}, ${visual.label}`}
         accessibilityHint={visual.hint}
       >
-        <PlotGround size={size} variant={note.id} />
-
-        {/* Zemin çizgisinin üstü: bitki höyüğe basıyor. */}
+        {/* kapak kısmı, bitki burada duruyor */}
         <View
           style={[
-            styles.plantZone,
+            styles.cover,
             styles.noHit,
-            { height: ground, paddingBottom: Math.round(moundHeight * 0.45) },
+            { height: cover, backgroundColor: stages[stage].cover },
           ]}
         >
           <Animated.View
@@ -296,37 +289,33 @@ function NoteCardComponent({
                 width: glowSize,
                 height: glowSize,
                 borderRadius: glowSize / 2,
-                bottom: -Math.round(glowSize * 0.3),
+                bottom: -Math.round(glowSize * 0.45),
               },
             ]}
           />
           <View
             style={[
-              styles.plantShadow,
+              styles.mound,
               {
-                width: Math.round(size * 0.22),
-                height: Math.round(size * 0.045),
-                borderRadius: size,
-                bottom: Math.round(moundHeight * 0.35),
+                width: Math.round(size * 0.46),
+                height: moundHeight,
+                borderTopLeftRadius: moundHeight,
+                borderTopRightRadius: moundHeight,
               },
             ]}
           />
-          <LivingPlant
-            stage={stage}
-            progress={progress}
-            height={plantBox}
-            seed={note.seed_type}
-          />
+          <View style={[styles.plant, { bottom: Math.round(moundHeight * 0.4) }]}>
+            <LivingPlant
+              stage={stage}
+              progress={progress}
+              height={plantBox}
+              seed={note.seed_type}
+            />
+          </View>
+          <Text style={styles.seedBadge}>{seed?.emoji ?? '🌾'}</Text>
         </View>
 
-        {/* Zemin çizgisinin altı: yazı. */}
-        <View
-          style={[
-            styles.base,
-            styles.noHit,
-            { top: ground, height: size - ground },
-          ]}
-        >
+        <View style={[styles.body, styles.noHit]}>
           <Text
             style={styles.title}
             numberOfLines={2}
@@ -334,24 +323,35 @@ function NoteCardComponent({
           >
             {note.title}
           </Text>
-          <Text
-            style={[styles.caption, isHarvestable ? styles.captionReady : null]}
-            numberOfLines={1}
-            maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
-          >
-            {isHarvestable
-              ? '↑ hasat'
-              : labor && labor.total > 0
-                ? `☑ ${labor.done}/${labor.total}`
-                : `${seed?.emoji ?? ''} ${visual.label}`}
-          </Text>
+          <View style={styles.metaRow}>
+            {isHarvestable ? (
+              <View style={styles.hint}>
+                <Icon name="arrow-up" size={12} color={stages.harvestable.accent} />
+                <Text
+                  style={[styles.hintText, { color: stages.harvestable.accent }]}
+                  maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
+                >
+                  Hasat et
+                </Text>
+              </View>
+            ) : (
+              <Tag label={visual.label} color={stages[stage].tag} />
+            )}
+            {labor && labor.total > 0 ? (
+              <View style={styles.hint}>
+                <Icon name="check-square" size={12} color={colors.textMuted} />
+                <Text style={styles.labor} maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}>
+                  {labor.done}/{labor.total}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {/*
-          Ot katmanı. Kaydırdıkça kayıyor ve soluyor. Hep ekranda duruyor,
-          görünürlüğünü opaklıkla ayarlıyoruz. Ama ot yokken erişilebilirlik
-          ağacından çıkarmak lazım, yoksa ekran okuyucu sağlam parselde de
-          "ot bastı / temizle" diye okuyor.
+          Ot katmanı. Kaydırdıkça kayıyor ve soluyor, hep ekranda duruyor.
+          Ot yokken ekran okuyucudan da gizliyoruz, yoksa sağlam kartta da
+          "ot bastı" diye okuyordu.
         */}
         <Animated.View
           accessibilityElementsHidden={!isWeedy}
@@ -362,16 +362,14 @@ function NoteCardComponent({
             { pointerEvents: isWeedy ? 'auto' : 'none' },
           ]}
         >
-          <View
-            style={[styles.weedRow, { top: ground - Math.round(size * 0.34) }]}
-          >
-            <Text style={{ fontSize: Math.round(size * 0.2) }}>🥀</Text>
-            <Text style={{ fontSize: Math.round(size * 0.15), opacity: 0.8 }}>
+          <View style={[styles.weedRow, { height: cover }]}>
+            <Text style={{ fontSize: Math.round(size * 0.18) }}>🥀</Text>
+            <Text style={{ fontSize: Math.round(size * 0.14), opacity: 0.8 }}>
               🌿
             </Text>
-            <Text style={{ fontSize: Math.round(size * 0.2) }}>🥀</Text>
+            <Text style={{ fontSize: Math.round(size * 0.18) }}>🥀</Text>
           </View>
-          <View style={[styles.base, { top: ground, height: size - ground }]}>
+          <View style={styles.body}>
             <Text
               style={styles.weedTitle}
               numberOfLines={2}
@@ -379,13 +377,12 @@ function NoteCardComponent({
             >
               {note.title}
             </Text>
-            <Text
-              style={styles.weedHint}
-              numberOfLines={1}
-              maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}
-            >
-              ↔ temizle
-            </Text>
+            <View style={styles.hint}>
+              <Icon name="move" size={12} color={colors.leafLight} />
+              <Text style={styles.weedHint} maxFontSizeMultiplier={DENSE_FONT_SCALE_CAP}>
+                Temizlemek için kaydır
+              </Text>
+            </View>
           </View>
         </Animated.View>
       </Animated.View>
@@ -395,87 +392,69 @@ function NoteCardComponent({
 
 export const NoteCard = React.memo(NoteCardComponent);
 
-const styles = StyleSheet.create({
-  /** Parsel tarlaya karışmıyor, kendi kenarlığı ve köşesi olan bir kart. */
-  plot: {
+const useStyles = makeStyles(({ colors, elevation }) => ({
+  card: {
     overflow: 'hidden',
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    borderColor: colors.soil,
-    backgroundColor: colors.soilDeep,
+    borderColor: colors.rule,
+    backgroundColor: colors.card,
     ...elevation.card,
   },
   /** Süs katmanları jestleri yakalamasın. */
   noHit: { pointerEvents: 'none' },
-  plantZone: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+  cover: {
     alignItems: 'center',
     justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
   glow: {
     position: 'absolute',
     alignSelf: 'center',
     backgroundColor: colors.goldLight,
   },
-  plantShadow: {
+  mound: {
     position: 'absolute',
+    bottom: 0,
     alignSelf: 'center',
-    backgroundColor: colors.bark,
+    backgroundColor: colors.soilLight,
     opacity: 0.35,
   },
-  /**
-   * Yazı bloğu zemin çizgisinin altındaki yarının ortasına oturuyor. Üstten
-   * sabit padding verince kartın dibinde bir tutam boş toprak kalıyordu. Koyu
-   * zeminde belli olmuyordu ama açık zeminde hata gibi duruyor.
-   */
-  base: {
+  plant: { position: 'absolute', alignSelf: 'center' },
+  // tohum emojisi sol üst köşede
+  seedBadge: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    top: spacing.sm,
+    left: spacing.sm,
+    fontSize: 14,
+  },
+  body: {
+    flex: 1,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  title: { ...typography.ui, fontSize: 13, lineHeight: 18, color: colors.textPrimary },
+  metaRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
-    gap: 1,
+    justifyContent: 'space-between',
+    gap: spacing.xs,
   },
-  title: {
-    ...typography.body,
-    fontSize: 13,
-    lineHeight: 17,
-    color: colors.textOnDark,
-    textAlign: 'center',
-  },
-  caption: {
-    ...typography.caption,
-    color: colors.textOnDarkMuted,
-    textAlign: 'center',
-  },
-  captionReady: { color: colors.goldLight },
+  hint: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  hintText: { ...typography.caption, fontWeight: '600' },
+  labor: { ...typography.caption, color: colors.textMuted },
   weedLayer: {
     ...StyleSheet.absoluteFill,
     backgroundColor: colors.weedDeep,
   },
   weedRow: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'center',
     gap: 2,
+    paddingBottom: spacing.xs,
   },
-  weedTitle: {
-    ...typography.caption,
-    color: colors.textOnDarkMuted,
-    textAlign: 'center',
-  },
-  weedHint: {
-    ...typography.caption,
-    fontSize: 10,
-    lineHeight: 14,
-    color: colors.leafLight,
-    textAlign: 'center',
-  },
-});
+  weedTitle: { ...typography.ui, fontSize: 13, lineHeight: 18, color: colors.textOnDark },
+  weedHint: { ...typography.caption, color: colors.leafLight },
+}));

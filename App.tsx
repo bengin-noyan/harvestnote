@@ -10,20 +10,26 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PixelButton } from './src/components/PixelButton';
 import { AppShell } from './src/navigation/AppShell';
 import { FarmProvider, useFarm } from './src/providers/FarmProvider';
-import { colors, spacing, typography } from './src/theme';
+import { spacing, typography } from './src/theme';
+import { makeStyles, ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
 export default function App() {
+  return (
+    <ThemeProvider>
+      <Root />
+    </ThemeProvider>
+  );
+}
+
+function Root() {
+  const { scheme } = useTheme();
+  const styles = useStyles();
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <FarmProvider>
-          {/*
-            Durum çubuğu yazıları koyu, çünkü kabuk açık renk. "light"
-            bırakınca telefonda saat ve pil beyaz kalıyor, beyaz başlığın
-            üstünde görünmüyor. Web'de durum çubuğu olmadığı için tarayıcıda
-            fark edilmiyor.
-          */}
-          <StatusBar style="dark" />
+          {/* durum çubuğu yazısı temanın tersi renkte, yoksa görünmüyordu */}
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
           <FarmGate />
         </FarmProvider>
       </SafeAreaProvider>
@@ -36,6 +42,8 @@ export default function App() {
  * Böylece görünümler verinin hazır olduğunu varsayarak yazılabiliyor.
  */
 function FarmGate() {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const { status, error, retry } = useFarm();
 
   if (status === 'loading') {
@@ -54,7 +62,7 @@ function FarmGate() {
         <Text style={styles.emoji}>🥀</Text>
         <Text style={styles.title}>Tarlaya girilemedi</Text>
         <Text style={styles.muted}>{error?.message}</Text>
-        <PixelButton label="Tekrar dene" icon="🔁" onPress={retry} />
+        <PixelButton label="Tekrar dene" onPress={retry} />
       </View>
     );
   }
@@ -62,7 +70,7 @@ function FarmGate() {
   return <AppShell />;
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   /**
    * Kök zemin uygulamanın her yerinde görünüyor: açılış karesi, aşırı
    * kaydırmadaki boşluk, ekran geçişlerinin arkası. Kabukla aynı renk olmalı,
@@ -84,4 +92,4 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
-});
+}));

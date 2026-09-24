@@ -39,11 +39,12 @@ import {
 } from 'react-native';
 
 import type { UseBlocksResult } from '../../hooks/useBlocks';
-import { colors, spacing, typography } from '../../theme';
+import { spacing, typography } from '../../theme';
 import type { BlockType, NoteBlock } from '../../types';
 import { BLOCK_META, BLOCK_MENU_ORDER, matchBlockTypes } from './blockMeta';
 import { BlockMenu } from './BlockMenu';
 import { BlockRow } from './BlockRow';
+import { makeStyles, useTheme } from '../../theme/ThemeProvider';
 
 interface Props {
   /**
@@ -58,6 +59,8 @@ interface Props {
 const CARET_DELAY_MS = 16;
 
 export function BlockEditor({ editor }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   const {
     blocks,
     loading,
@@ -336,10 +339,10 @@ export function BlockEditor({ editor }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   loading: { paddingVertical: spacing.xl, alignItems: 'center' },
   // Notun altındaki boşluğa dokununca da yazmaya devam edilsin, Notion'daki
   // gibi. Yükseklik parmak hedefi kadar.
   appendRow: { paddingVertical: spacing.md },
   appendText: { ...typography.caption, color: colors.textMuted },
-});
+}));

@@ -4,124 +4,114 @@
  * Kayıtlar inventory tablosundan geliyor. Not silinse bile hasat kaydı
  * kalıyor (ON DELETE SET NULL), yani geçmiş bozulmuyor.
  *
- * Safe area ile uğraşmıyor, kabuğun içindeki görünümlerden biri.
+ * Safe area ile uğraşmıyor, kabuğun içinde duruyor. Başlık kısmı tarla
+ * sayfasıyla aynı.
  */
 import React from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '../components/EmptyState';
 import { InventoryCard } from '../components/InventoryCard';
+import { DatabaseHeader } from '../components/ui/DatabaseHeader';
+import { FadeIn, staggerDelay } from '../components/ui/FadeIn';
+import { Tag } from '../components/ui/Tag';
 import { SEED_CATALOG } from '../game/config';
-import { useInventory } from '../hooks/useInventory';
-import { borders, colors, radii, spacing, typography } from '../theme';
+import type { UseInventoryResult } from '../hooks/useInventory';
+import { borders, spacing } from '../theme';
 import type { InventoryItem } from '../types';
 import { PAGE_MAX_WIDTH } from './NotePage';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
-export function InventoryView() {
-  const { items, summary, totalValue, loading, discard } = useInventory();
+export function InventoryView({ inventory }: { inventory: UseInventoryResult }) {
+  const { colors } = useTheme();
+  const styles = useStyles();
+  const { items, summary, totalValue, loading, discard } = inventory;
 
-  return (
-    <View style={styles.root}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerTitleBlock}>
-            <Text style={styles.title}>Kiler</Text>
-            <Text style={styles.subtitle}>
-              {items.length > 0
-                ? `${items.length} ürün · ${totalValue} puan`
-                : 'Raflar henüz boş'}
-            </Text>
-          </View>
-          <Text style={styles.headerEmoji}>🧺</Text>
-        </View>
-
+  // Başlık da listeyle birlikte kaysın.
+  const header = (
+    <View style={styles.header}>
+      <DatabaseHeader
+        icon="🧺"
+        title="Kiler"
+        description={
+          items.length > 0
+            ? `${items.length} ürün · ${totalValue} puan`
+            : 'Raflar henüz boş'
+        }
+      >
         {summary.length > 0 ? (
           <View style={styles.shelf}>
             {summary.map((entry) => {
               const seed = SEED_CATALOG[entry.seed_type];
               return (
-                <View key={entry.seed_type} style={styles.shelfItem}>
-                  <Text style={styles.shelfEmoji}>{seed?.emoji ?? '🌾'}</Text>
-                  <Text style={styles.shelfCount}>×{entry.count}</Text>
-                </View>
+                <Tag
+                  key={entry.seed_type}
+                  label={`${seed?.emoji ?? '🌾'} ${seed?.label ?? ''} ×${entry.count}`}
+                  color="gray"
+                />
               );
             })}
           </View>
         ) : null}
-      </View>
-
-      {loading ? (
-        <View style={styles.loading}>
-          <ActivityIndicator color={colors.goldDeep} />
-        </View>
-      ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item: InventoryItem) => String(item.id)}
-          renderItem={({ item }) => (
-            <InventoryCard item={item} onDiscard={discard} />
-          )}
-          contentContainerStyle={styles.list}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <EmptyState
-              emoji="🧺"
-              title="Kiler boş"
-              message="Tarlada olgunlaşan bir ürünü yukarı kaydırarak hasat et; buraya düşecek."
-              onDark={false}
-            />
-          }
-        />
-      )}
+      </DatabaseHeader>
+      <View style={styles.rule} />
     </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.textMuted} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      style={styles.root}
+      data={items}
+      keyExtractor={(item: InventoryItem) => String(item.id)}
+      renderItem={({ item, index }) => (
+        <FadeIn delay={staggerDelay(index)}>
+          <InventoryCard item={item} onDiscard={discard} />
+        </FadeIn>
+      )}
+      ListHeaderComponent={header}
+      contentContainerStyle={styles.list}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      showsVerticalScrollIndicator={false}
+      ListEmptyComponent={
+        <EmptyState
+          emoji="🧺"
+          title="Kiler boş"
+          message="Tarlada olgunlaşan bir ürünü yukarı kaydırarak hasat et; buraya düşecek."
+        />
+      }
+    />
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors }) => ({
   root: { flex: 1, backgroundColor: colors.ground },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: borders.hairline,
-    borderBottomColor: colors.rule,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitleBlock: { flex: 1, gap: 2 },
-  headerEmoji: { fontSize: 30 },
-  title: { ...typography.display, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textMuted },
+  header: { paddingBottom: spacing.lg },
   shelf: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  /** Raf sayacı. Kenarlık yok, hafif bir zeminle ayrılıyor. */
-  shelfItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surfaceSunken,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+  rule: {
+    height: borders.hairline,
+    backgroundColor: colors.rule,
+    marginTop: spacing.lg,
   },
-  shelfEmoji: { fontSize: 16 },
-  shelfCount: { ...typography.caption, color: colors.textSecondary },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xxl * 2,
     width: '100%',
     maxWidth: PAGE_MAX_WIDTH,
     alignSelf: 'center',
   },
   separator: { height: spacing.md },
-});
+}));

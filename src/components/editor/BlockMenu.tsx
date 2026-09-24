@@ -12,9 +12,10 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { borders, colors, elevation, radii, spacing, typography } from '../../theme';
+import { borders, radii, spacing, typography } from '../../theme';
 import type { BlockType } from '../../types';
 import type { BlockMeta } from './blockMeta';
+import { makeStyles } from '../../theme/ThemeProvider';
 
 interface Props {
   items: BlockMeta[];
@@ -30,6 +31,7 @@ interface Props {
 const MAX_HEIGHT = 224;
 
 export function BlockMenu({ items, onSelect, onDelete, activeType }: Props) {
+  const styles = useStyles();
   if (items.length === 0 && !onDelete) {
     return (
       <View style={styles.panel}>
@@ -92,7 +94,7 @@ export function BlockMenu({ items, onSelect, onDelete, activeType }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, elevation }) => ({
   panel: {
     backgroundColor: colors.surface,
     borderRadius: radii.md,
@@ -111,8 +113,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
-  rowPressed: { backgroundColor: colors.surfaceSunken },
-  rowActive: { backgroundColor: colors.surfaceSunken },
+  rowPressed: { backgroundColor: colors.hover },
+  rowActive: { backgroundColor: colors.hover },
   /** Silmeyi çizgiyle ayırdım, tür değiştirmekten farklı bir şey. */
   deleteRow: {
     borderTopWidth: borders.hairline,
@@ -128,10 +130,10 @@ const styles = StyleSheet.create({
   label: { ...typography.body, color: colors.textPrimary },
   deleteLabel: { color: colors.danger },
   hint: { ...typography.caption, color: colors.textMuted },
-  tick: { ...typography.body, color: colors.leafDeep },
+  tick: { ...typography.body, color: colors.accent },
   empty: {
     ...typography.caption,
     color: colors.textMuted,
     padding: spacing.md,
   },
-});
+}));

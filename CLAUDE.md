@@ -48,16 +48,19 @@ The note body lives in `note_blocks` (migration 2), reached through
 ### The shell
 
 There is **no navigation library**. `navigation/AppShell.tsx` is a hand-rolled
-workspace: a sidebar (permanent at ≥900px, a sliding drawer below) plus a content area
-showing either a view (`FarmView` / `ListView` / `InventoryView`) or a `NotePage`.
+workspace: a sidebar (permanent at ≥900px and collapsible, a sliding drawer below) plus
+a content area showing either a page or a `NotePage`. The pages are listed once in
+`navigation/views.ts` (`WorkspaceView`): Ana sayfa, Yaklaşanlar, the Tarla database with
+three tabs (`farm` gallery / `list` table / `board`), Kiler, İstatistikler, Ayarlar and
+Rehber. Every page is derived from the same props; none adds a query.
 React Navigation was removed because its screen/tab containers fought the sidebar
 layout for a stack that is at most two levels deep; the cost is that the Android back
 button is wired manually via `BackHandler` in `AppShell`. Adding a router back would
 undo that trade, not improve it.
 
-`AppShell` makes the single `useNotes()` call and passes notes down as props. The
-sidebar, list and farm each calling it would run the same query three times per
-`revision`.
+`AppShell` makes the single `useNotes()` and the single `useInventory()` call and
+passes both down as props. Each page calling them would run the same query several
+times per `revision`.
 
 `src/db/index.ts` is the data layer's public entry; UI should not reach into
 `database.ts` or `schema.ts` directly.
@@ -112,12 +115,14 @@ This distinction drives most of the design:
 through `useNotes`/`useInventory` and picks one:
 
 - `notifyScheduleChanged()` — the write moves some note's weed clock. Bumps
-  `revision` *and* asks for a reminder sync. All five `useNotes` mutations use it:
+  `revision` *and* asks for a reminder sync. Every `useNotes` mutation except
+  `toggleFavorite` uses it:
   planting creates a reminder, harvest/delete invalidate one, and tend/edit both
   refresh `last_tended_at` (see `updateNote`), which slides the reminder forward.
 - `notifyContentChanged()` — the write cannot move any reminder. Bumps `revision`
-  only; the notification layer is never touched. Today that is just discarding a
-  pantry item.
+  only; the notification layer is never touched. Today that is discarding a pantry
+  item and starring a note (`favorited_at`, migration 3), which deliberately does not
+  touch `last_tended_at`.
 
 **Put cross-cutting reactions here, not in individual mutations** — that is what
 makes "harvested but its reminder is still scheduled" unrepresentable. When unsure
@@ -225,8 +230,30 @@ the projection refuses to write after that (`WHERE harvested_at IS NULL`).
 
 ## UI conventions
 
-- No extra UI libraries. Bottom sheets, buttons and icons are RN primitives,
-  `StyleSheet` and emoji; palette and scales live in `src/theme/index.ts`.
+- The only UI dependency is `@expo/vector-icons` (Feather set, via
+  `components/ui/Icon`), used for all chrome icons. Page/seed icons stay emoji, as in
+  Notion. Sheets and buttons are RN primitives.
+- **Light and dark themes.** `theme/index.ts` holds two palettes with identical keys
+  (Notion's light and dark values), tag colours and stage palettes; there is **no
+  static `colors` export**. Components get colours from `theme/ThemeProvider.tsx`:
+  `makeStyles(({ colors, elevation }) => ({...}))` for stylesheets (created once per
+  scheme and cached — on web StyleSheet compiles to CSS classes, so colours cannot be
+  mutated later) and `useTheme()` for inline values (`colors`, `tags`, `stages`,
+  `scheme`, `setMode`). A module-level colour table would freeze one theme; build it
+  from the theme inside the component instead. The mode (`system | light | dark`) is
+  stored in the `preferences` table and mirrored to `localStorage` on web to avoid a
+  flash on reload.
+- The soil palette only paints the game surface (`LivingPlant`, card covers). Shared
+  Notion pieces live in `components/ui/` (`Page`, `DatabaseHeader`, `Tag`, `FadeIn`,
+  `Icon`, `IconButton`) and `navigation/TopBar.tsx`; a stage shows as a `Tag` via
+  `stages[stage].tag`.
+- Stage colours are **not** a valid categorical chart palette (brown/green collapse
+  under protanopia — checked with the dataviz validator). Charts in `StatsView` are
+  single-hue accent bars with text labels; keep it that way.
+- Hover is `useHover()` + `onHoverIn/onHoverOut`; never nest a `Pressable` inside
+  another — on web that renders `<button>` inside `<button>`.
+- Entrance motion goes through `FadeIn` (shared values, not Reanimated `entering`),
+  which honours reduced motion; durations/easings come from `theme/motion.ts`.
 - **`LivingPlant` is the product's differentiator, not decoration.** The crop is drawn
   from Views (`borderRadius` leaves, a stem that interpolates its height off maturity)
   and sways continuously, so progress reads as a growing organism rather than one of

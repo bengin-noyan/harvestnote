@@ -1,23 +1,34 @@
 /**
- * Liste görünümü. Aynı veri, ızgara yerine satırlar.
+ * Tablo görünümü. Aynı notlar ama satır satır (ad, aşama, olgunluk, ekildi).
  *
- * Izgara durumu ve ilerlemeyi iyi gösteriyor ama içeriği göstermiyor, parsele
- * sadece başlık sığıyor. Liste bunun tersi: her satırda notun düz metninden
- * bir önizleme var. `notes.content` zaten blokların izdüşümü olarak
- * güncelleniyor, bu görünüm o sütunu ilk gerçekten kullanan yer.
+ * Tarla kartlarına sadece başlık sığıyor, burada notun içinden bir önizleme
+ * de gösteriyoruz. notes.content bloklardan otomatik güncellendiği için
+ * ekstra bir şey yapmaya gerek kalmadı.
+ *
+ * Dar ekranda tablo yana kayıyor.
  */
-import React from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { EmptyState } from '../components/EmptyState';
+import { DatabaseHeader } from '../components/ui/DatabaseHeader';
+import { FadeIn, staggerDelay } from '../components/ui/FadeIn';
+import { Icon, type IconName } from '../components/ui/Icon';
+import { Tag } from '../components/ui/Tag';
 import { SEED_CATALOG } from '../game/config';
 import { maturityProgress, resolveStage, STAGE_VISUALS } from '../game/stages';
-import { borders, colors, radii, spacing, typography } from '../theme';
-import { STAGE_COLORS } from '../theme/stageColors';
+import { useHover } from '../hooks/useHover';
+import { borders, radii, spacing, typography } from '../theme';
 import type { TodoCount } from '../db/repositories/blocks';
 import type { Note } from '../types';
 import { formatRelative } from '../utils/format';
-import { PAGE_MAX_WIDTH } from './NotePage';
+import type { FieldTab } from '../navigation/views';
+import { FIELD_TABS } from './FarmView';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
+
+// Sütun genişlikleri, Ad sütunu kalan yeri alıyor.
+const COLUMNS = { stage: 150, maturity: 150, planted: 110 } as const;
+const TABLE_MIN_WIDTH = 640;
 
 interface Props {
   notes: Note[];
@@ -27,6 +38,7 @@ interface Props {
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
   onAdd: () => void;
+  onSelectTab: (tab: FieldTab) => void;
 }
 
 export function ListView({
@@ -37,49 +49,102 @@ export function ListView({
   onOpen,
   onTend,
   onAdd,
+  onSelectTab,
 }: Props) {
+  const styles = useStyles();
+  // Yatay ScrollView içinde width '100%' çalışmıyor, genişliği ölçüp
+  // kendimiz veriyoruz.
+  const [columnWidth, setColumnWidth] = useState(0);
+
   return (
-    <FlatList
-      data={notes}
-      keyExtractor={(note) => String(note.id)}
+    <ScrollView
       style={styles.root}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      ItemSeparatorComponent={() => <View style={styles.separator} />}
-      ListHeaderComponent={
-        <View style={styles.header}>
-          <Text style={styles.title}>{searching ? 'Sonuçlar' : 'Liste'}</Text>
-          <Text style={styles.subtitle}>
-            {notes.length > 0
-              ? `${notes.length} not`
-              : searching
-                ? 'Eşleşen not yok'
-                : 'Henüz tohum ekilmedi'}
-          </Text>
-        </View>
-      }
-      ListEmptyComponent={
-        searching ? null : (
+    >
+      <View
+        style={styles.column}
+        onLayout={(event) => setColumnWidth(event.nativeEvent.layout.width)}
+      >
+        <DatabaseHeader
+          icon="🌾"
+          title="Tarla"
+          description={
+            searching
+              ? `${notes.length} sonuç`
+              : 'Her not toprağa atılmış bir tohum. Yazdıkça ve bitirdikçe büyüyor.'
+          }
+          tabs={FIELD_TABS}
+          activeTab="list"
+          onSelectTab={onSelectTab}
+          onNew={onAdd}
+        />
+
+        {notes.length === 0 && !searching ? (
           <EmptyState
             emoji="🌱"
             title="Tarla boş"
             message="Yeni bir tohum ekerek başla; her not toprakta büyüyen bir ürün."
-            onDark={false}
             actionLabel="Yeni tohum"
             onAction={onAdd}
           />
-        )
-      }
-      renderItem={({ item }) => (
-        <Row
-          note={item}
-          labor={labor.get(item.id)}
-          now={now}
-          onOpen={onOpen}
-          onTend={onTend}
-        />
-      )}
-    />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View
+              style={[
+                styles.table,
+                { width: Math.max(TABLE_MIN_WIDTH, columnWidth) },
+              ]}
+            >
+              <View style={styles.headRow}>
+                <HeadCell icon="type" label="Ad" flex />
+                <HeadCell icon="disc" label="Aşama" width={COLUMNS.stage} />
+                <HeadCell icon="trending-up" label="Olgunluk" width={COLUMNS.maturity} />
+                <HeadCell icon="calendar" label="Ekildi" width={COLUMNS.planted} />
+              </View>
+
+              {notes.map((note, index) => (
+                <FadeIn key={note.id} delay={staggerDelay(index)} offset={4}>
+                  <Row
+                    note={note}
+                    labor={labor.get(note.id)}
+                    now={now}
+                    onOpen={onOpen}
+                    onTend={onTend}
+                  />
+                </FadeIn>
+              ))}
+
+              {searching ? null : <AddRow onPress={onAdd} />}
+            </View>
+          </ScrollView>
+        )}
+
+        {notes.length > 0 ? (
+          <Text style={styles.count}>Sayı {notes.length}</Text>
+        ) : null}
+      </View>
+    </ScrollView>
+  );
+}
+
+function HeadCell({
+  icon,
+  label,
+  width,
+  flex = false,
+}: {
+  icon: IconName;
+  label: string;
+  width?: number;
+  flex?: boolean;
+}) {
+  const styles = useStyles();
+  return (
+    <View style={[styles.cell, styles.headCell, flex ? styles.flexCell : { width }]}>
+      <Icon name={icon} size={13} />
+      <Text style={styles.headText}>{label}</Text>
+    </View>
   );
 }
 
@@ -96,6 +161,9 @@ function Row({
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
 }) {
+  const { stages } = useTheme();
+  const styles = useStyles();
+  const { hovered, bind } = useHover();
   const stage = resolveStage(note, now, undefined, labor);
   const visual = STAGE_VISUALS[stage];
   const seed = SEED_CATALOG[note.seed_type];
@@ -110,7 +178,11 @@ function Row({
   return (
     <Pressable
       onPress={() => (blocked ? onTend(note.id) : onOpen(note.id))}
-      style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
+      {...bind}
+      style={({ pressed }) => [
+        styles.row,
+        hovered || pressed ? styles.rowHover : null,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={
         blocked
@@ -118,91 +190,143 @@ function Row({
           : `${note.title} — ${visual.label}`
       }
     >
-      <Text style={styles.emoji}>{seed?.emoji ?? '🌾'}</Text>
-
-      <View style={styles.rowBody}>
-        <Text style={styles.rowTitle} numberOfLines={1}>
-          {note.title}
-        </Text>
-        {note.content ? (
-          <Text style={styles.preview} numberOfLines={1}>
-            {/* İzdüşümde satır sonu var, listede tek satıra indiriyoruz. */}
-            {note.content.replace(/\s+/g, ' ')}
+      <View style={[styles.cell, styles.flexCell, styles.nameCell]}>
+        <Text style={styles.emoji}>{seed?.emoji ?? '🌾'}</Text>
+        <View style={styles.nameBody}>
+          <Text style={styles.name} numberOfLines={1}>
+            {note.title}
           </Text>
-        ) : (
-          <Text style={[styles.preview, styles.previewEmpty]}>Boş</Text>
-        )}
+          {note.content ? (
+            <Text style={styles.preview} numberOfLines={1}>
+              {/* content'te satır sonları var, tek satıra çeviriyoruz */}
+              {note.content.replace(/\s+/g, ' ')}
+            </Text>
+          ) : null}
+        </View>
+        {/* üstüne gelince çıkan küçük düğme */}
+        {hovered ? (
+          <View style={styles.openChip}>
+            <Text style={styles.openText}>{blocked ? '🌿 Temizle' : 'Aç'}</Text>
+          </View>
+        ) : null}
+      </View>
 
-        {/*
-          Olgunluk çubuğu. Yüzdelik genişlik DimensionValue'yu karşılamıyor,
-          o yüzden iki flex oranı kullanıyoruz (NoteCard'daki yöntemin aynısı).
-        */}
+      <View style={[styles.cell, { width: COLUMNS.stage }]}>
+        <Tag
+          label={visual.label}
+          color={stages[stage].tag}
+        />
+      </View>
+
+      <View style={[styles.cell, styles.barCell, { width: COLUMNS.maturity }]}>
+        {/* yüzde genişlik TS'de hata veriyor, iki flex değeriyle yaptım */}
         <View style={styles.bar}>
           <View
             style={[
               styles.barFill,
-              { flex: progress, backgroundColor: STAGE_COLORS[stage].accent },
+              { flex: progress, backgroundColor: stages[stage].accent },
             ]}
           />
           <View style={{ flex: 1 - progress }} />
         </View>
+        <Text style={styles.muted}>%{Math.round(progress * 100)}</Text>
       </View>
 
-      <View style={styles.rowMeta}>
-        {blocked ? (
-          <Text style={styles.tend}>🌿 Temizle</Text>
-        ) : (
-          <View
-            style={[
-              styles.stageDot,
-              { backgroundColor: STAGE_COLORS[stage].accent },
-            ]}
-          />
-        )}
-        <Text style={styles.time}>{formatRelative(note.created_at)}</Text>
+      <View style={[styles.cell, { width: COLUMNS.planted }]}>
+        <Text style={styles.muted} numberOfLines={1}>
+          {formatRelative(note.created_at, now)}
+        </Text>
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function AddRow({ onPress }: { onPress: () => void }) {
+  const styles = useStyles();
+  const { hovered, bind } = useHover();
+  return (
+    <Pressable
+      onPress={onPress}
+      {...bind}
+      style={({ pressed }) => [
+        styles.addRow,
+        hovered || pressed ? styles.rowHover : null,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Yeni tohum ek"
+    >
+      <Icon name="plus" size={14} />
+      <Text style={styles.addText}>Yeni</Text>
+    </Pressable>
+  );
+}
+
+const useStyles = makeStyles(({ colors }) => ({
   root: { flex: 1, backgroundColor: colors.surface },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    width: '100%',
-    maxWidth: PAGE_MAX_WIDTH,
-    alignSelf: 'center',
+  content: { paddingHorizontal: spacing.xl, paddingBottom: spacing.xxl * 3 },
+  column: { width: '100%', maxWidth: 960, alignSelf: 'center' },
+  table: { minWidth: TABLE_MIN_WIDTH },
+  headRow: {
+    flexDirection: 'row',
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
   },
-  header: { paddingBottom: spacing.lg, gap: 2 },
-  title: { ...typography.display, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textMuted },
   row: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
+    minHeight: 40,
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
   },
-  pressed: { backgroundColor: colors.surfaceSunken },
-  emoji: { fontSize: 20, paddingTop: 2 },
-  rowBody: { flex: 1, gap: 2 },
-  rowTitle: { ...typography.heading, color: colors.textPrimary },
-  preview: { ...typography.caption, color: colors.textMuted },
-  previewEmpty: { fontStyle: 'italic' },
-  bar: {
+  rowHover: { backgroundColor: colors.surfaceSunken },
+  cell: {
     flexDirection: 'row',
-    height: 2,
-    marginTop: spacing.xs,
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRightWidth: borders.hairline,
+    borderRightColor: colors.rule,
+  },
+  flexCell: { flex: 1, minWidth: 230 },
+  headCell: { gap: 6, paddingVertical: 8 },
+  headText: { ...typography.body, color: colors.textSecondary },
+  nameCell: { gap: spacing.sm },
+  emoji: { fontSize: 16, lineHeight: 20 },
+  nameBody: { flex: 1 },
+  name: { ...typography.ui, color: colors.textPrimary },
+  preview: { ...typography.caption, color: colors.textMuted },
+  openChip: {
+    borderWidth: borders.hairline,
+    borderColor: colors.ruleStrong,
+    backgroundColor: colors.surface,
+    borderRadius: radii.xs,
+    paddingHorizontal: 6,
+  },
+  openText: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+  barCell: { gap: spacing.sm },
+  bar: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 4,
     backgroundColor: colors.rule,
-    borderRadius: 1,
+    borderRadius: 2,
     overflow: 'hidden',
   },
-  barFill: { height: 2 },
-  rowMeta: { alignItems: 'flex-end', gap: spacing.xs, paddingTop: 4 },
-  stageDot: { width: 6, height: 6, borderRadius: 3 },
-  tend: { ...typography.caption, color: colors.leafDeep },
-  time: { ...typography.caption, color: colors.textMuted },
-  separator: { height: borders.hairline, backgroundColor: 'transparent' },
-});
+  barFill: { height: 4, borderRadius: 2 },
+  muted: { ...typography.body, color: colors.textMuted },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: borders.hairline,
+    borderBottomColor: colors.rule,
+  },
+  addText: { ...typography.body, color: colors.textMuted },
+  count: {
+    ...typography.caption,
+    color: colors.textMuted,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.sm,
+  },
+}));

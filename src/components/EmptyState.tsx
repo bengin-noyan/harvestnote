@@ -2,8 +2,9 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../theme';
+import { spacing, typography } from '../theme';
 import { PixelButton } from './PixelButton';
+import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 interface Props {
   emoji: string;
@@ -28,6 +29,8 @@ export function EmptyState({
   actionLabel,
   onAction,
 }: Props) {
+  const { colors } = useTheme();
+  const styles = useStyles();
   return (
     <View style={styles.wrapper}>
       <Text style={styles.emoji}>{emoji}</Text>
@@ -53,7 +56,7 @@ export function EmptyState({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(() => ({
   wrapper: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -65,4 +68,4 @@ const styles = StyleSheet.create({
   title: { ...typography.title },
   message: { ...typography.body, textAlign: 'center', lineHeight: 20 },
   action: { marginTop: spacing.md },
-});
+}));

@@ -91,6 +91,8 @@ export interface Note {
    * tarladan çıkıyor ama satırı duruyor (kilerin kaynağı bu).
    */
   harvested_at: number | null;
+  // favoriye eklenme zamanı, favori değilse null (migration 3)
+  favorited_at: number | null;
 }
 
 /**
@@ -147,6 +149,7 @@ export interface NoteRow {
   seed_type: string;
   last_tended_at: number;
   harvested_at: number | null;
+  favorited_at: number | null;
 }
 
 export interface NoteBlockRow {

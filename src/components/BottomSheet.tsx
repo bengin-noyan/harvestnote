@@ -30,8 +30,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { borders, colors, elevation, radii, spacing, typography } from '../theme';
+import { borders, radii, spacing, typography } from '../theme';
 import { durations, easings, springs } from '../theme/motion';
+import { makeStyles } from '../theme/ThemeProvider';
 
 const DISMISS_DISTANCE = 90;
 
@@ -50,6 +51,7 @@ export function BottomSheet({
   subtitle,
   children,
 }: Props) {
+  const styles = useStyles();
   // Kapanış animasyonu oynasın diye Modal, visible false olduktan sonra da
   // kısa süre ekranda kalıyor.
   const [mounted, setMounted] = useState(visible);
@@ -152,9 +154,9 @@ export function BottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = makeStyles(({ colors, elevation }) => ({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.bark },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.backdrop },
   /**
    * box-none: panelin dışındaki boşluk tıklamayı arkadaki backdrop'a geçirsin.
    *
@@ -167,7 +169,7 @@ const styles = StyleSheet.create({
   // Panel artık kenarlıkla değil, gölge ve köşe yuvarlamasıyla ayrılıyor.
   // Altındaki ekran zaten açık renk, kalın çerçeve paneli kutuya çeviriyordu.
   sheet: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.popover,
     borderTopLeftRadius: radii.lg,
     borderTopRightRadius: radii.lg,
     // paddingBottom satır içinde veriliyor, alt güvenli alana bağlı.
@@ -197,4 +199,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   body: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
-});
+}));
