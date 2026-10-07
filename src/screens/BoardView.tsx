@@ -1,12 +1,17 @@
 /**
- * Pano görünümü. Her aşama bir sütun, notlar da o sütunlarda.
+ * Pano görünümü. Notlar aşamaya, önceliğe ya da etikete göre sütunlarda.
  *
  * Kartları sürükleyip başka sütuna taşıma yok. Aşama zamana ve bitirilen
  * işlere göre hesaplanıyor, elle değiştirilemiyor (bkz. game/stages.ts).
+ * Öncelik ve etiket not sayfasından değişiyor.
+ *
+ * Etikete göre gruplayınca birden çok etiketi olan not her sütununda çıkıyor,
+ * Notion'daki çoklu seçim gibi.
  */
 import React, { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { PRIORITY_META, PRIORITY_ORDER } from '../components/properties/priority';
 import { DatabaseHeader } from '../components/ui/DatabaseHeader';
 import { FadeIn, staggerDelay } from '../components/ui/FadeIn';
 import { Icon } from '../components/ui/Icon';
@@ -20,39 +25,63 @@ import {
   type VisualStage,
 } from '../game/stages';
 import { useHover } from '../hooks/useHover';
-import type { FieldTab } from '../navigation/views';
+import type { BoardGroup, FieldTab } from '../navigation/views';
 import { radii, spacing, typography } from '../theme';
 import { makeStyles, useTheme } from '../theme/ThemeProvider';
-import type { Note } from '../types';
-import { formatRelative } from '../utils/format';
+import type { Note, NoteTag, TagColor } from '../types';
+import { formatDue, formatRelative } from '../utils/format';
 import { FIELD_TABS } from './FarmView';
 
-const COLUMNS: VisualStage[] = ['planted', 'growing', 'harvestable', 'weedy'];
+const STAGE_ORDER: VisualStage[] = ['planted', 'growing', 'harvestable', 'weedy'];
 const COLUMN_WIDTH = 250;
+
+const GROUP_OPTIONS: { key: BoardGroup; label: string }[] = [
+  { key: 'stage', label: 'Aşama' },
+  { key: 'priority', label: 'Öncelik' },
+  { key: 'tag', label: 'Etiket' },
+];
+
+interface Column {
+  key: string;
+  label: string;
+  color: TagColor;
+  notes: Note[];
+}
 
 interface Props {
   notes: Note[];
   labor: Map<number, TodoCount>;
+  noteTags: Map<number, NoteTag[]>;
+  allTags: NoteTag[];
   now: number;
+  group: BoardGroup;
+  onChangeGroup: (group: BoardGroup) => void;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
   onAdd: () => void;
   onSelectTab: (tab: FieldTab) => void;
 }
 
-export function BoardView({ notes, labor, now, onOpen, onTend, onAdd, onSelectTab }: Props) {
+export function BoardView({
+  notes,
+  labor,
+  noteTags,
+  allTags,
+  now,
+  group,
+  onChangeGroup,
+  onOpen,
+  onTend,
+  onAdd,
+  onSelectTab,
+}: Props) {
   const styles = useStyles();
+  const { stages } = useTheme();
   const [width, setWidth] = useState(0);
 
-  const grouped: Record<VisualStage, Note[]> = {
-    planted: [],
-    growing: [],
-    harvestable: [],
-    weedy: [],
-  };
-  for (const note of notes) {
-    grouped[resolveStage(note, now, undefined, labor.get(note.id))].push(note);
-  }
+  const columns = buildColumns(group, notes, labor, noteTags, allTags, now, (stage) =>
+    stages[stage].tag,
+  );
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -63,12 +92,13 @@ export function BoardView({ notes, labor, now, onOpen, onTend, onAdd, onSelectTa
         <DatabaseHeader
           icon="🌾"
           title="Tarla"
-          description="Notlar aşamalarına göre sütunlarda. Aşama zamanla ve işler bittikçe kendiliğinden değişir."
+          description="Notlar sütunlarda. Aşama zamanla ve işler bittikçe kendiliğinden değişir."
           tabs={FIELD_TABS}
           activeTab="board"
           onSelectTab={onSelectTab}
           onNew={onAdd}
         />
+        <GroupPicker value={group} onChange={onChangeGroup} />
       </View>
 
       {/* sütunlar ekrana sığmazsa yana kayıyor */}
@@ -81,16 +111,16 @@ export function BoardView({ notes, labor, now, onOpen, onTend, onAdd, onSelectTa
         ]}
         style={styles.boardScroll}
       >
-        {COLUMNS.map((stage) => (
+        {columns.map((column, index) => (
           <BoardColumn
-            key={stage}
-            stage={stage}
-            notes={grouped[stage]}
+            key={column.key}
+            column={column}
             labor={labor}
             now={now}
             onOpen={onOpen}
             onTend={onTend}
-            onAdd={stage === 'planted' ? onAdd : undefined}
+            // yeni not ekilmiş başlıyor, aşama panosunda ilk sütun ona ait
+            onAdd={group === 'stage' && index === 0 ? onAdd : undefined}
           />
         ))}
       </ScrollView>
@@ -98,17 +128,120 @@ export function BoardView({ notes, labor, now, onOpen, onTend, onAdd, onSelectTa
   );
 }
 
+function buildColumns(
+  group: BoardGroup,
+  notes: Note[],
+  labor: Map<number, TodoCount>,
+  noteTags: Map<number, NoteTag[]>,
+  allTags: NoteTag[],
+  now: number,
+  stageColor: (stage: VisualStage) => TagColor,
+): Column[] {
+  if (group === 'priority') {
+    return PRIORITY_ORDER.map((level) => ({
+      key: `p${level}`,
+      label: level === 0 ? 'Öncelik yok' : PRIORITY_META[level].label,
+      color: PRIORITY_META[level].color,
+      notes: notes.filter((note) => note.priority === level),
+    }));
+  }
+
+  if (group === 'tag') {
+    // sadece notu olan etiketler sütun oluyor, sonda etiketsizler
+    const tagged = allTags
+      .map((tag) => ({
+        key: `t${tag.id}`,
+        label: tag.name,
+        color: tag.color,
+        notes: notes.filter((note) =>
+          (noteTags.get(note.id) ?? []).some((t) => t.id === tag.id),
+        ),
+      }))
+      .filter((column) => column.notes.length > 0);
+    const untagged: Column = {
+      key: 'none',
+      label: 'Etiketsiz',
+      color: 'gray',
+      notes: notes.filter((note) => !noteTags.has(note.id)),
+    };
+    return [...tagged, untagged];
+  }
+
+  return STAGE_ORDER.map((stage) => ({
+    key: stage,
+    label: STAGE_VISUALS[stage].label,
+    color: stageColor(stage),
+    notes: notes.filter(
+      (note) => resolveStage(note, now, undefined, labor.get(note.id)) === stage,
+    ),
+  }));
+}
+
+// Sütunların üstündeki "Grupla" seçici
+function GroupPicker({
+  value,
+  onChange,
+}: {
+  value: BoardGroup;
+  onChange: (group: BoardGroup) => void;
+}) {
+  const styles = useStyles();
+  return (
+    <View style={styles.groupRow}>
+      <Icon name="layers" size={13} />
+      <Text style={styles.groupLabel}>Grupla</Text>
+      {GROUP_OPTIONS.map((option) => (
+        <GroupOption
+          key={option.key}
+          label={option.label}
+          active={option.key === value}
+          onPress={() => onChange(option.key)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function GroupOption({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const styles = useStyles();
+  const { hovered, bind } = useHover();
+  return (
+    <Pressable
+      onPress={onPress}
+      {...bind}
+      style={[
+        styles.groupOption,
+        active ? styles.groupOptionActive : null,
+        hovered && !active ? styles.hover : null,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={`${label} ile grupla`}
+    >
+      <Text style={[styles.groupText, active ? styles.groupTextActive : null]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function BoardColumn({
-  stage,
-  notes,
+  column,
   labor,
   now,
   onOpen,
   onTend,
   onAdd,
 }: {
-  stage: VisualStage;
-  notes: Note[];
+  column: Column;
   labor: Map<number, TodoCount>;
   now: number;
   onOpen: (id: number) => void;
@@ -116,13 +249,13 @@ function BoardColumn({
   onAdd?: () => void;
 }) {
   const styles = useStyles();
-  const { stages, colors } = useTheme();
+  const { colors } = useTheme();
   const add = useHover();
-  const visual = STAGE_VISUALS[stage];
+  const { notes } = column;
   return (
     <View style={styles.boardColumn}>
       <View style={styles.columnHead}>
-        <Tag label={visual.label} color={stages[stage].tag} />
+        <Tag label={column.label} color={column.color} />
         <Text style={styles.count}>{notes.length}</Text>
       </View>
       {notes.map((note, index) => (
@@ -131,7 +264,6 @@ function BoardColumn({
             note={note}
             labor={labor.get(note.id)}
             now={now}
-            stage={stage}
             onOpen={onOpen}
             onTend={onTend}
           />
@@ -159,22 +291,23 @@ function BoardCard({
   note,
   labor,
   now,
-  stage,
   onOpen,
   onTend,
 }: {
   note: Note;
   labor?: TodoCount;
   now: number;
-  stage: VisualStage;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
 }) {
   const styles = useStyles();
   const { stages, colors } = useTheme();
   const { hovered, bind } = useHover();
+  // aşama sütunu dışında da çubuğun rengi ve ot kuralı lazım
+  const stage = resolveStage(note, now, undefined, labor);
   const progress = maturityProgress(note, now, undefined, labor);
   const weedy = stage === 'weedy';
+  const due = note.due_at !== null ? formatDue(note.due_at, now) : null;
   return (
     <Pressable
       onPress={() => (weedy ? onTend(note.id) : onOpen(note.id))}
@@ -203,7 +336,20 @@ function BoardCard({
         <View style={{ flex: 1 - progress }} />
       </View>
       <View style={styles.cardFoot}>
-        <Text style={styles.meta}>{formatRelative(note.created_at, now)}</Text>
+        {due ? (
+          <View style={styles.labor}>
+            <Icon
+              name="calendar"
+              size={12}
+              color={due.tone === 'overdue' ? colors.danger : colors.textMuted}
+            />
+            <Text style={[styles.meta, due.tone === 'overdue' ? styles.overdue : null]}>
+              {due.label}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.meta}>{formatRelative(note.created_at, now)}</Text>
+        )}
         {labor && labor.total > 0 ? (
           <View style={styles.labor}>
             <Icon name="check-square" size={12} color={colors.textMuted} />
@@ -233,6 +379,21 @@ const useStyles = makeStyles(({ colors, elevation }) => ({
     paddingBottom: spacing.xs,
   },
   count: { ...typography.caption, color: colors.textMuted },
+  groupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingTop: spacing.md,
+  },
+  groupLabel: { ...typography.body, color: colors.textMuted, marginRight: spacing.xs },
+  groupOption: {
+    borderRadius: radii.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+  },
+  groupOptionActive: { backgroundColor: colors.accentSoft },
+  groupText: { ...typography.body, color: colors.textSecondary },
+  groupTextActive: { color: colors.accent, fontWeight: '500' },
   card: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -257,6 +418,7 @@ const useStyles = makeStyles(({ colors, elevation }) => ({
   barFill: { height: 3 },
   cardFoot: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   meta: { ...typography.caption, color: colors.textMuted },
+  overdue: { color: colors.danger },
   labor: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tend: {
     ...typography.caption,

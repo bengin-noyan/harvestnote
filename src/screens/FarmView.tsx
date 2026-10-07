@@ -31,6 +31,7 @@ export const FIELD_TABS: ViewTab<FieldTab>[] = [
   { key: 'farm', icon: 'grid', label: 'Galeri' },
   { key: 'list', icon: 'list', label: 'Tablo' },
   { key: 'board', icon: 'columns', label: 'Pano' },
+  { key: 'calendar', icon: 'calendar', label: 'Takvim' },
 ];
 
 const GRID_PADDING = spacing.xl;

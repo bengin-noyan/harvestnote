@@ -37,7 +37,9 @@ import { useInventory } from '../hooks/useInventory';
 import { useNotes } from '../hooks/useNotes';
 import { useNow } from '../hooks/useNow';
 import { useReminderTap } from '../hooks/useReminderTap';
+import { useViewPrefs } from '../hooks/useViewPrefs';
 import { BoardView } from '../screens/BoardView';
+import { CalendarView } from '../screens/CalendarView';
 import { FarmView } from '../screens/FarmView';
 import { GuideView } from '../screens/GuideView';
 import { HomeView } from '../screens/HomeView';
@@ -52,7 +54,7 @@ import type { NoteTag } from '../types';
 import { makeStyles, useTheme } from '../theme/ThemeProvider';
 import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { TopBar } from './TopBar';
-import { isFieldTab, VIEW_META, type FieldTab, type WorkspaceView } from './views';
+import { isFieldTab, VIEW_META, type WorkspaceView } from './views';
 
 /**
  * Kenar çubuğunun sabit durabilmesi için gereken en az genişlik. 900px altında
@@ -87,8 +89,9 @@ export function AppShell() {
   const wide = width >= WIDE_BREAKPOINT;
 
   const [view, setView] = useState<WorkspaceView>('home');
-  // Tarla'da en son hangi sekme açıktı, geri dönünce o açılsın
-  const [fieldTab, setFieldTab] = useState<FieldTab>('farm');
+  // Tarla'da en son hangi sekme açıktı, geri dönünce o açılsın.
+  // Pano gruplamasıyla birlikte kalıcı (preferences tablosu).
+  const { fieldTab, setFieldTab, boardGroup, setBoardGroup } = useViewPrefs();
   // geniş ekranda kenar çubuğu gizlendi mi
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [openNoteId, setOpenNoteId] = useState<number | null>(null);
@@ -125,7 +128,7 @@ export function AppShell() {
     if (isFieldTab(next)) setFieldTab(next);
     setOpenNoteId(null);
     setDrawerOpen(false);
-  }, []);
+  }, [setFieldTab]);
 
   const openField = useCallback(() => selectView(fieldTab), [selectView, fieldTab]);
 
@@ -342,6 +345,22 @@ export function AppShell() {
       case 'board':
         return (
           <BoardView
+            notes={filtered}
+            labor={labor}
+            noteTags={noteTags}
+            allTags={tags}
+            group={boardGroup}
+            onChangeGroup={setBoardGroup}
+            now={now}
+            onOpen={openNote}
+            onTend={handleTend}
+            onAdd={startAdding}
+            onSelectTab={selectView}
+          />
+        );
+      case 'calendar':
+        return (
+          <CalendarView
             notes={filtered}
             labor={labor}
             now={now}

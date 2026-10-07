@@ -56,8 +56,11 @@ There is **no navigation library**. `navigation/AppShell.tsx` is a hand-rolled
 workspace: a sidebar (permanent at ≥900px and collapsible, a sliding drawer below) plus
 a content area showing either a page or a `NotePage`. The pages are listed once in
 `navigation/views.ts` (`WorkspaceView`): Ana sayfa, Yaklaşanlar, the Tarla database with
-three tabs (`farm` gallery / `list` table / `board`), Kiler, İstatistikler, Ayarlar and
-Rehber. Every page is derived from the same props; none adds a query.
+four tabs (`farm` gallery / `list` table / `board` / `calendar` by `due_at`), Kiler,
+İstatistikler, Ayarlar and Rehber. Every page is derived from the same props; none adds
+a query. The last Tarla tab and the board's grouping (stage / priority / tag) persist
+through `useViewPrefs` into the key-value `preferences` table (migration 3) — the
+roadmap's separate `view_prefs` migration turned out to be unnecessary.
 React Navigation was removed because its screen/tab containers fought the sidebar
 layout for a stack that is at most two levels deep; the cost is that the Android back
 button is wired manually via `BackHandler` in `AppShell`. Adding a router back would

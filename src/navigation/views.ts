@@ -8,16 +8,28 @@ export type WorkspaceView =
   | 'farm'
   | 'list'
   | 'board'
+  | 'calendar'
   | 'inventory'
   | 'stats'
   | 'settings'
   | 'guide';
 
 // Tarla sayfasındaki sekmeler
-export type FieldTab = 'farm' | 'list' | 'board';
+export type FieldTab = 'farm' | 'list' | 'board' | 'calendar';
 
-export function isFieldTab(view: WorkspaceView): view is FieldTab {
-  return view === 'farm' || view === 'list' || view === 'board';
+export const FIELD_TAB_KEYS: FieldTab[] = ['farm', 'list', 'board', 'calendar'];
+
+export function isFieldTab(view: string): view is FieldTab {
+  return (FIELD_TAB_KEYS as string[]).includes(view);
+}
+
+// Pano neye göre sütunlara ayrılıyor
+export type BoardGroup = 'stage' | 'priority' | 'tag';
+
+export const BOARD_GROUPS: BoardGroup[] = ['stage', 'priority', 'tag'];
+
+export function isBoardGroup(value: string): value is BoardGroup {
+  return (BOARD_GROUPS as string[]).includes(value);
 }
 
 interface ViewMeta {
@@ -33,6 +45,7 @@ export const VIEW_META: Record<WorkspaceView, ViewMeta> = {
   farm: { label: 'Tarla', emoji: '🌾' },
   list: { label: 'Tarla', emoji: '🌾' },
   board: { label: 'Tarla', emoji: '🌾' },
+  calendar: { label: 'Tarla', emoji: '🌾' },
   inventory: { label: 'Kiler', emoji: '🧺' },
   stats: { label: 'İstatistikler', icon: 'bar-chart-2' },
   settings: { label: 'Ayarlar', icon: 'settings' },
