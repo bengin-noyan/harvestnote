@@ -68,6 +68,14 @@ export async function updateNote(
     sets.push('seed_type = ?');
     params.push(input.seed_type);
   }
+  if (input.due_at !== undefined) {
+    sets.push('due_at = ?');
+    params.push(input.due_at);
+  }
+  if (input.priority !== undefined) {
+    sets.push('priority = ?');
+    params.push(input.priority);
+  }
 
   if (!sets.length) return getNoteById(id);
 

@@ -3,6 +3,9 @@
  * gösteriyor (ot bastı, hasada hazır, bugün, bu hafta, daha sonra).
  *
  * Bildirimler de aynı saate göre kuruluyor, bu sayfa onların listesi gibi.
+ *
+ * En üstte bir de son tarih bölümü var. Son tarih ot saatinden ayrı bir şey,
+ * kullanıcının kendi koyduğu tarih. O yüzden aynı not iki bölümde de çıkabiliyor.
  */
 import React from 'react';
 import { Text } from 'react-native';
@@ -16,7 +19,10 @@ import { msUntilWeedy, resolveStage } from '../game/stages';
 import { typography } from '../theme';
 import { makeStyles } from '../theme/ThemeProvider';
 import type { Note } from '../types';
-import { formatDuration } from '../utils/format';
+import { daysUntil, formatDue, formatDuration } from '../utils/format';
+
+// son tarih bölümünde kaç gün ilerisine bakıyoruz
+const DUE_WINDOW_DAYS = 7;
 
 interface Props {
   notes: Note[];
@@ -44,6 +50,11 @@ export function UpcomingView({ notes, labor, now, onOpen, onTend, onHarvest }: P
   const today = rest.filter((e) => e.left < DAY);
   const week = rest.filter((e) => e.left >= DAY && e.left < 7 * DAY);
   const later = rest.filter((e) => e.left >= 7 * DAY);
+
+  // geçmiş olanlar da dahil, en eski tarih önce
+  const dueSoon = notes
+    .filter((note) => note.due_at !== null && daysUntil(note.due_at, now) <= DUE_WINDOW_DAYS)
+    .sort((a, b) => (a.due_at ?? 0) - (b.due_at ?? 0));
 
   const row = (entry: (typeof entries)[number], action?: 'tend' | 'harvest') => (
     <NoteRow
@@ -77,6 +88,21 @@ export function UpcomingView({ notes, labor, now, onOpen, onTend, onHarvest }: P
         </Callout>
       ) : (
         <FadeIn>
+          {dueSoon.length > 0 ? (
+            <Section title={`Son tarih · ${dueSoon.length}`} icon="flag">
+              {dueSoon.map((note) => (
+                <NoteRow
+                  key={note.id}
+                  note={note}
+                  labor={labor.get(note.id)}
+                  now={now}
+                  onOpen={onOpen}
+                  onTend={onTend}
+                  meta={note.due_at !== null ? formatDue(note.due_at, now).label : undefined}
+                />
+              ))}
+            </Section>
+          ) : null}
           {weedy.length > 0 ? (
             <Section title={`Ot bastı · ${weedy.length}`} icon="alert-triangle">
               {weedy.map((e) => row(e, 'tend'))}

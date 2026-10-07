@@ -27,6 +27,9 @@ import Animated, {
 import type { TodoCount } from '../db/repositories/blocks';
 import { BlockEditor } from '../components/editor/BlockEditor';
 import { LivingPlant } from '../components/LivingPlant';
+import { DuePicker } from '../components/properties/DuePicker';
+import { PRIORITY_META, PRIORITY_ORDER } from '../components/properties/priority';
+import { TagEditor } from '../components/properties/TagEditor';
 import { NewButton } from '../components/ui/DatabaseHeader';
 import { FadeIn } from '../components/ui/FadeIn';
 import { Icon, type IconName } from '../components/ui/Icon';
@@ -45,8 +48,13 @@ import { TopBar } from '../navigation/TopBar';
 import { reminderTimeFor } from '../notifications/weedReminders';
 import { borders, radii, spacing, typography } from '../theme';
 import { durations, easings } from '../theme/motion';
-import type { Note, UpdateNoteInput } from '../types';
-import { formatDate, formatDuration, formatRelative } from '../utils/format';
+import type { Note, NoteTag, UpdateNoteInput } from '../types';
+import {
+  formatDate,
+  formatDue,
+  formatDuration,
+  formatRelative,
+} from '../utils/format';
 import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 /** Başlık da bloklarla aynı ritimde kaydedilsin. */
@@ -61,6 +69,9 @@ const PLANT_HEIGHT = 84;
 // bundan dar ekranda başlık küçülüyor
 const NARROW = 600;
 
+// özellik adlarının sütun genişliği
+const labelWidthFor = (narrow: boolean) => (narrow ? 118 : 160);
+
 interface Props {
   note: Note;
   /** Notun yapılacak sayımı. Olgunluğun emek kısmı buradan geliyor. */
@@ -74,7 +85,15 @@ interface Props {
   onOpenSidebar?: () => void;
   favorite: boolean;
   onToggleFavorite: () => void;
+  // notun etiketleri ve önerilecek bütün etiketler
+  tags: NoteTag[];
+  allTags: NoteTag[];
+  onAddTag: (name: string) => void;
+  onRemoveTag: (tagId: number) => void;
 }
+
+// Not sayfasında aynı anda tek açılır panel oluyor
+type OpenPanel = 'due' | 'priority' | null;
 
 export function NotePage({
   note,
@@ -87,18 +106,24 @@ export function NotePage({
   onOpenSidebar,
   favorite,
   onToggleFavorite,
+  tags,
+  allTags,
+  onAddTag,
+  onRemoveTag,
 }: Props) {
   const { colors, stages } = useTheme();
   const styles = useStyles();
   const [title, setTitle] = useState(note.title);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [panel, setPanel] = useState<OpenPanel>(null);
   // Web'de multiline input 2 satır yüksekliğinde açılıyordu. Web'de 1 satır
   // veriyoruz, boyu da içeriğe göre ayarlanıyor. Android'de numberOfLines
   // satırı sabitlediği için orada vermiyoruz.
   const [titleHeight, setTitleHeight] = useState<number | undefined>(undefined);
   const { width } = useWindowDimensions();
   const narrow = width < NARROW;
+  const labelWidth = labelWidthFor(narrow);
 
   const editor = useBlocks(note.id);
 
@@ -116,7 +141,19 @@ export function NotePage({
     setTitle(note.title);
     setBusy(false);
     setMenuOpen(false);
+    setPanel(null);
   }, [note.id]);
+
+  const togglePanel = (next: OpenPanel) =>
+    setPanel((current) => (current === next ? null : next));
+
+  // Son tarih ve öncelik updateNote'tan geçiyor, yani bakım sayılıyor.
+  const saveProperty = (input: UpdateNoteInput) => {
+    setPanel(null);
+    onSave(note.id, input).catch((error: unknown) => {
+      if (__DEV__) console.warn('[not] ozellik kaydedilemedi', error);
+    });
+  };
 
   const flushTitle = useCallback(async () => {
     if (titleTimer.current) {
@@ -178,6 +215,8 @@ export function NotePage({
   const untilWeedy = msUntilWeedy(note);
   const untilReminder = reminderTimeFor(note) - now;
   const ripe = stage === 'harvestable';
+  const due = note.due_at !== null ? formatDue(note.due_at, now) : null;
+  const priority = PRIORITY_META[note.priority];
 
   return (
     <View style={styles.root}>
@@ -253,6 +292,65 @@ export function NotePage({
           <FadeIn delay={60} style={styles.properties}>
             <Property icon="disc" label="Aşama" narrow={narrow}>
               <Tag label={visual.label} color={stages[stage].tag} />
+            </Property>
+            <Property
+              icon="calendar"
+              label="Son tarih"
+              narrow={narrow}
+              onPress={() => togglePanel('due')}
+            >
+              {due && note.due_at !== null ? (
+                <Text style={[styles.value, due.tone === 'overdue' ? styles.overdue : null]}>
+                  {formatDate(note.due_at)}{' '}
+                  <Text style={due.tone === 'overdue' ? styles.overdue : styles.valueMuted}>
+                    ({due.label})
+                  </Text>
+                </Text>
+              ) : (
+                <Text style={styles.valueMuted}>Boş</Text>
+              )}
+            </Property>
+            {panel === 'due' ? (
+              <View style={[styles.panelSlot, { paddingLeft: labelWidth }]}>
+                <DuePicker
+                  value={note.due_at}
+                  onChange={(dueAt) => saveProperty({ due_at: dueAt })}
+                />
+              </View>
+            ) : null}
+            <Property
+              icon="flag"
+              label="Öncelik"
+              narrow={narrow}
+              onPress={() => togglePanel('priority')}
+            >
+              {note.priority > 0 ? (
+                <Tag label={priority.label} color={priority.color} />
+              ) : (
+                <Text style={styles.valueMuted}>Boş</Text>
+              )}
+            </Property>
+            {panel === 'priority' ? (
+              <View style={[styles.panelSlot, { paddingLeft: labelWidth }]}>
+                <View style={styles.optionPanel}>
+                  {PRIORITY_ORDER.map((level) => (
+                    <MenuItem
+                      key={level}
+                      icon={level === note.priority ? 'check' : 'flag'}
+                      label={PRIORITY_META[level].label}
+                      onPress={() => saveProperty({ priority: level })}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+            <Property icon="hash" label="Etiketler" narrow={narrow}>
+              <TagEditor
+                tags={tags}
+                allTags={allTags}
+                onAdd={onAddTag}
+                onRemove={onRemoveTag}
+              />
             </Property>
             <Property icon="tag" label="Tohum" narrow={narrow}>
               <Text style={styles.value}>
@@ -351,27 +449,48 @@ export function NotePage({
 }
 
 // Solda özelliğin adı, sağda değeri.
+// onPress yoksa satır düz View. Etiket satırının içinde kendi düğmeleri var,
+// Pressable içinde Pressable web'de button içinde button oluyordu.
 function Property({
   icon,
   label,
   narrow,
+  onPress,
   children,
 }: {
   icon: IconName;
   label: string;
   narrow: boolean;
+  onPress?: () => void;
   children: React.ReactNode;
 }) {
   const styles = useStyles();
   const { hovered, bind } = useHover();
-  return (
-    <Pressable {...bind} style={styles.property}>
-      <View style={[styles.propertyLabel, { width: narrow ? 118 : 160 }]}>
-        <Icon name={icon} size={14} />
-        <Text style={styles.propertyText} numberOfLines={1}>
-          {label}
-        </Text>
+  const name = (
+    <View style={[styles.propertyLabel, { width: labelWidthFor(narrow) }]}>
+      <Icon name={icon} size={14} />
+      <Text style={styles.propertyText} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+  if (!onPress) {
+    return (
+      <View style={styles.property}>
+        {name}
+        <View style={styles.propertyValue}>{children}</View>
       </View>
+    );
+  }
+  return (
+    <Pressable
+      {...bind}
+      onPress={onPress}
+      style={styles.property}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      {name}
       <View style={[styles.propertyValue, hovered ? styles.hovered : null]}>
         {children}
       </View>
@@ -497,6 +616,18 @@ const useStyles = makeStyles(({ colors, elevation }) => ({
   hovered: { backgroundColor: colors.hover },
   value: { ...typography.body, color: colors.textPrimary },
   valueMuted: { ...typography.body, color: colors.textMuted },
+  overdue: { color: colors.danger },
+  // açılır paneller özellik değerinin hizasından başlıyor
+  panelSlot: { paddingTop: spacing.xs, paddingBottom: spacing.sm },
+  optionPanel: {
+    width: 200,
+    backgroundColor: colors.popover,
+    borderRadius: radii.sm,
+    borderWidth: borders.hairline,
+    borderColor: colors.rule,
+    padding: spacing.xs,
+    ...elevation.popover,
+  },
   bar: {
     flexDirection: 'row',
     width: 120,

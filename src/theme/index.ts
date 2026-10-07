@@ -12,6 +12,7 @@
 import { Platform, StyleSheet } from 'react-native';
 
 import type { VisualStage } from '../game/stages';
+import type { TagColor } from '../types';
 
 export type Scheme = 'light' | 'dark';
 
@@ -141,15 +142,9 @@ const darkColors: ThemeColors = {
   leafDeep: '#6aa84f',
 };
 
-// Etiket renkleri. Aşama ve kalite etiketleri bunları kullanıyor.
-export type TagColor =
-  | 'gray'
-  | 'brown'
-  | 'orange'
-  | 'yellow'
-  | 'green'
-  | 'blue'
-  | 'red';
+// Etiket renkleri. Aşama, kalite ve kullanıcının etiketleri bunları kullanıyor.
+// Adların listesi types'ta, çünkü DB'ye de yazılıyor.
+export type { TagColor } from '../types';
 
 export type TagPalette = Record<TagColor, { bg: string; text: string }>;
 

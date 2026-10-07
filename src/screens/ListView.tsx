@@ -1,5 +1,6 @@
 /**
- * Tablo görünümü. Aynı notlar ama satır satır (ad, aşama, olgunluk, ekildi).
+ * Tablo görünümü. Aynı notlar ama satır satır (ad, aşama, olgunluk, son
+ * tarih, öncelik, etiketler, ekildi).
  *
  * Tarla kartlarına sadece başlık sığıyor, burada notun içinden bir önizleme
  * de gösteriyoruz. notes.content bloklardan otomatik güncellendiği için
@@ -15,24 +16,34 @@ import { DatabaseHeader } from '../components/ui/DatabaseHeader';
 import { FadeIn, staggerDelay } from '../components/ui/FadeIn';
 import { Icon, type IconName } from '../components/ui/Icon';
 import { Tag } from '../components/ui/Tag';
+import { PRIORITY_META } from '../components/properties/priority';
+import { TagChip } from '../components/properties/TagEditor';
 import { SEED_CATALOG } from '../game/config';
 import { maturityProgress, resolveStage, STAGE_VISUALS } from '../game/stages';
 import { useHover } from '../hooks/useHover';
 import { borders, radii, spacing, typography } from '../theme';
 import type { TodoCount } from '../db/repositories/blocks';
-import type { Note } from '../types';
-import { formatRelative } from '../utils/format';
+import type { Note, NoteTag } from '../types';
+import { formatDue, formatRelative } from '../utils/format';
 import type { FieldTab } from '../navigation/views';
 import { FIELD_TABS } from './FarmView';
 import { makeStyles, useTheme } from '../theme/ThemeProvider';
 
 // Sütun genişlikleri, Ad sütunu kalan yeri alıyor.
-const COLUMNS = { stage: 150, maturity: 150, planted: 110 } as const;
-const TABLE_MIN_WIDTH = 640;
+const COLUMNS = {
+  stage: 140,
+  maturity: 130,
+  due: 120,
+  priority: 100,
+  tags: 180,
+  planted: 110,
+} as const;
+const TABLE_MIN_WIDTH = 1010;
 
 interface Props {
   notes: Note[];
   labor: Map<number, TodoCount>;
+  noteTags: Map<number, NoteTag[]>;
   now: number;
   searching: boolean;
   onOpen: (id: number) => void;
@@ -44,6 +55,7 @@ interface Props {
 export function ListView({
   notes,
   labor,
+  noteTags,
   now,
   searching,
   onOpen,
@@ -100,7 +112,10 @@ export function ListView({
                 <HeadCell icon="type" label="Ad" flex />
                 <HeadCell icon="disc" label="Aşama" width={COLUMNS.stage} />
                 <HeadCell icon="trending-up" label="Olgunluk" width={COLUMNS.maturity} />
-                <HeadCell icon="calendar" label="Ekildi" width={COLUMNS.planted} />
+                <HeadCell icon="calendar" label="Son tarih" width={COLUMNS.due} />
+                <HeadCell icon="flag" label="Öncelik" width={COLUMNS.priority} />
+                <HeadCell icon="hash" label="Etiketler" width={COLUMNS.tags} />
+                <HeadCell icon="clock" label="Ekildi" width={COLUMNS.planted} />
               </View>
 
               {notes.map((note, index) => (
@@ -108,6 +123,7 @@ export function ListView({
                   <Row
                     note={note}
                     labor={labor.get(note.id)}
+                    tags={noteTags.get(note.id)}
                     now={now}
                     onOpen={onOpen}
                     onTend={onTend}
@@ -151,12 +167,14 @@ function HeadCell({
 function Row({
   note,
   labor,
+  tags,
   now,
   onOpen,
   onTend,
 }: {
   note: Note;
   labor?: TodoCount;
+  tags?: NoteTag[];
   now: number;
   onOpen: (id: number) => void;
   onTend: (id: number) => void;
@@ -174,6 +192,7 @@ function Row({
    */
   const blocked = stage === 'weedy';
   const progress = maturityProgress(note, now, undefined, labor);
+  const due = note.due_at !== null ? formatDue(note.due_at, now) : null;
 
   return (
     <Pressable
@@ -230,6 +249,32 @@ function Row({
           <View style={{ flex: 1 - progress }} />
         </View>
         <Text style={styles.muted}>%{Math.round(progress * 100)}</Text>
+      </View>
+
+      <View style={[styles.cell, { width: COLUMNS.due }]}>
+        {due ? (
+          <Text
+            style={[styles.muted, due.tone === 'overdue' ? styles.overdue : styles.dueText]}
+            numberOfLines={1}
+          >
+            {due.label}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={[styles.cell, { width: COLUMNS.priority }]}>
+        {note.priority > 0 ? (
+          <Tag
+            label={PRIORITY_META[note.priority].label}
+            color={PRIORITY_META[note.priority].color}
+          />
+        ) : null}
+      </View>
+
+      <View style={[styles.cell, styles.tagsCell, { width: COLUMNS.tags }]}>
+        {(tags ?? []).map((tag) => (
+          <TagChip key={tag.id} tag={tag} />
+        ))}
       </View>
 
       <View style={[styles.cell, { width: COLUMNS.planted }]}>
@@ -313,6 +358,10 @@ const useStyles = makeStyles(({ colors }) => ({
   },
   barFill: { height: 4, borderRadius: 2 },
   muted: { ...typography.body, color: colors.textMuted },
+  dueText: { color: colors.textPrimary },
+  overdue: { color: colors.danger },
+  // etiketler hücreye sığmazsa kesiliyor, satır yüksekliği değişmesin
+  tagsCell: { gap: 4, overflow: 'hidden' },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',

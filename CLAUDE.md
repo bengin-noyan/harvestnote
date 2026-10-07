@@ -44,6 +44,11 @@ types → db (schema · repositories · mappers) → game (pure rules) → notif
 
 The note body lives in `note_blocks` (migration 2), reached through
 `db/repositories/blocks.ts` and rendered by `components/editor/`.
+Properties (migration 4) are fixed columns `notes.due_at` (local start-of-day ms)
+and `notes.priority` (0–3), plus `tags`/`note_tags` via `db/repositories/tags.ts`.
+Tag-name matching is done in JS with `toLocaleLowerCase('tr')` because SQLite's
+`NOCASE` only folds ASCII (`İş` ≠ `iş`); a tag no note uses any more is deleted.
+The editors live in `components/properties/`.
 
 ### The shell
 
@@ -116,13 +121,14 @@ through `useNotes`/`useInventory` and picks one:
 
 - `notifyScheduleChanged()` — the write moves some note's weed clock. Bumps
   `revision` *and* asks for a reminder sync. Every `useNotes` mutation except
-  `toggleFavorite` uses it:
+  `toggleFavorite`, `addTag` and `removeTag` uses it:
   planting creates a reminder, harvest/delete invalidate one, and tend/edit both
   refresh `last_tended_at` (see `updateNote`), which slides the reminder forward.
+  Setting a due date or priority goes through `updateNote`, so it counts as tending.
 - `notifyContentChanged()` — the write cannot move any reminder. Bumps `revision`
   only; the notification layer is never touched. Today that is discarding a pantry
-  item and starring a note (`favorited_at`, migration 3), which deliberately does not
-  touch `last_tended_at`.
+  item, starring a note (`favorited_at`, migration 3) and adding/removing a tag
+  (migration 4), none of which touch `last_tended_at`.
 
 **Put cross-cutting reactions here, not in individual mutations** — that is what
 makes "harvested but its reminder is still scheduled" unrepresentable. When unsure

@@ -11,6 +11,7 @@ import {
   HARVEST_QUALITIES,
   NOTE_STATUSES,
   SEED_TYPES,
+  TAG_COLORS,
   type BlockType,
   type HarvestQuality,
   type InventoryItem,
@@ -20,7 +21,11 @@ import {
   type NoteBlockRow,
   type NoteRow,
   type NoteStatus,
+  type NoteTag,
+  type NoteTagRow,
+  type Priority,
   type SeedType,
+  type TagColor,
   type Settings,
   type SettingsRow,
 } from '../types';
@@ -50,6 +55,14 @@ export const toHarvestQuality = (value: string): HarvestQuality =>
 export const toBlockType = (value: string): BlockType =>
   oneOf(BLOCK_TYPES, value, 'paragraph', 'block.type');
 
+export const toTagColor = (value: string): TagColor =>
+  oneOf(TAG_COLORS, value, 'gray', 'tag.color');
+
+// CHECK 0-3 arasına zorluyor, yine de aralık dışı gelirse 0 sayıyoruz.
+export function toPriority(value: number): Priority {
+  return value === 1 || value === 2 || value === 3 ? value : 0;
+}
+
 export function mapNote(row: NoteRow): Note {
   return {
     id: row.id,
@@ -61,6 +74,17 @@ export function mapNote(row: NoteRow): Note {
     last_tended_at: row.last_tended_at,
     harvested_at: row.harvested_at ?? null,
     favorited_at: row.favorited_at ?? null,
+    due_at: row.due_at ?? null,
+    priority: toPriority(row.priority),
+  };
+}
+
+export function mapNoteTag(row: NoteTagRow): NoteTag {
+  return {
+    id: row.id,
+    name: row.name,
+    color: toTagColor(row.color),
+    created_at: row.created_at,
   };
 }
 

@@ -117,6 +117,37 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 4,
+    label: 'properties-and-tags',
+    statements: `
+      -- Son tarih o günün başlangıcı (yerel saat, epoch ms). Saat tutmuyoruz.
+      ALTER TABLE notes ADD COLUMN due_at INTEGER;
+      -- 0 yok, 1 düşük, 2 orta, 3 yüksek
+      ALTER TABLE notes ADD COLUMN priority INTEGER NOT NULL DEFAULT 0
+        CHECK (priority BETWEEN 0 AND 3);
+
+      CREATE TABLE IF NOT EXISTS tags (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+        color      TEXT    NOT NULL DEFAULT 'gray',
+        created_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS note_tags (
+        note_id INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+        tag_id  INTEGER NOT NULL REFERENCES tags(id)  ON DELETE CASCADE,
+        PRIMARY KEY (note_id, tag_id)
+      );
+
+      -- Bir etiketin notlarını bulmak için. Diğer yön primary key'de var.
+      CREATE INDEX IF NOT EXISTS idx_note_tags_tag
+        ON note_tags (tag_id, note_id);
+
+      CREATE INDEX IF NOT EXISTS idx_notes_due
+        ON notes (harvested_at, due_at);
+    `,
+  },
   // Yeni sürümler buraya. Yayınlanmış kayıtlara dokunmuyoruz.
 ];
 

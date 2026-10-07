@@ -10,5 +10,6 @@ export {
 export { DATABASE_NAME, TARGET_SCHEMA_VERSION } from './schema';
 export * as notesRepository from './repositories/notes';
 export * as blocksRepository from './repositories/blocks';
+export * as tagsRepository from './repositories/tags';
 export * as inventoryRepository from './repositories/inventory';
 export * as settingsRepository from './repositories/settings';

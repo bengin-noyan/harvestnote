@@ -67,6 +67,31 @@ export type HarvestQuality =
 
 export const HARVEST_QUALITIES = ['golden', 'normal', 'withered'] as const;
 
+// Not önceliği. 0 = yok. DB'de de sayı olarak duruyor (migration 4).
+export type Priority = 0 | 1 | 2 | 3;
+
+export const PRIORITIES = [0, 1, 2, 3] as const;
+
+// Etiket renkleri. Tema bu adlara göre renk veriyor (theme/index.ts).
+export type TagColor =
+  | 'gray'
+  | 'brown'
+  | 'orange'
+  | 'yellow'
+  | 'green'
+  | 'blue'
+  | 'red';
+
+export const TAG_COLORS = [
+  'gray',
+  'brown',
+  'orange',
+  'yellow',
+  'green',
+  'blue',
+  'red',
+] as const;
+
 /* ------------------------------------------------------------------ */
 /* Domain modelleri                                                    */
 /* ------------------------------------------------------------------ */
@@ -93,6 +118,17 @@ export interface Note {
   harvested_at: number | null;
   // favoriye eklenme zamanı, favori değilse null (migration 3)
   favorited_at: number | null;
+  // son tarih, o günün başı (yerel saat). Yoksa null. (migration 4)
+  due_at: number | null;
+  priority: Priority;
+}
+
+/** tags tablosu. Ad büyük/küçük harf duyarsız tekil. */
+export interface NoteTag {
+  id: number;
+  name: string;
+  color: TagColor;
+  created_at: number;
 }
 
 /**
@@ -150,6 +186,15 @@ export interface NoteRow {
   last_tended_at: number;
   harvested_at: number | null;
   favorited_at: number | null;
+  due_at: number | null;
+  priority: number;
+}
+
+export interface NoteTagRow {
+  id: number;
+  name: string;
+  color: string;
+  created_at: number;
 }
 
 export interface NoteBlockRow {
@@ -194,6 +239,9 @@ export interface UpdateNoteInput {
   title?: string;
   content?: string | null;
   seed_type?: SeedType;
+  // null verince son tarih kalkıyor
+  due_at?: number | null;
+  priority?: Priority;
 }
 
 export interface CreateBlockInput {

@@ -48,6 +48,7 @@ import { SettingsView } from '../screens/SettingsView';
 import { StatsView } from '../screens/StatsView';
 import { UpcomingView } from '../screens/UpcomingView';
 import { durations, easings } from '../theme/motion';
+import type { NoteTag } from '../types';
 import { makeStyles, useTheme } from '../theme/ThemeProvider';
 import { Sidebar, SIDEBAR_WIDTH } from './Sidebar';
 import { TopBar } from './TopBar';
@@ -59,11 +60,27 @@ import { isFieldTab, VIEW_META, type FieldTab, type WorkspaceView } from './view
  */
 const WIDE_BREAKPOINT = 900;
 
+// her render'da yeni boş dizi oluşmasın
+const NO_TAGS: NoteTag[] = [];
+
 export function AppShell() {
   const { colors } = useTheme();
   const styles = useStyles();
-  const { notes, labor, loading, plant, tend, harvest, save, remove, toggleFavorite } =
-    useNotes();
+  const {
+    notes,
+    labor,
+    tags,
+    noteTags,
+    loading,
+    plant,
+    tend,
+    harvest,
+    save,
+    remove,
+    toggleFavorite,
+    addTag,
+    removeTag,
+  } = useNotes();
   const inventory = useInventory();
   const now = useNow();
   const { width } = useWindowDimensions();
@@ -173,12 +190,16 @@ export function AppShell() {
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('tr');
     if (!term) return notes;
+    // etiket adıyla da bulunsun
     return notes.filter(
       (note) =>
         note.title.toLocaleLowerCase('tr').includes(term) ||
-        (note.content ?? '').toLocaleLowerCase('tr').includes(term),
+        (note.content ?? '').toLocaleLowerCase('tr').includes(term) ||
+        (noteTags.get(note.id) ?? []).some((tag) =>
+          tag.name.toLocaleLowerCase('tr').includes(term),
+        ),
     );
-  }, [notes, search]);
+  }, [notes, noteTags, search]);
 
   // Yaklaşanlar'daki sayı. Otlu olanlar ve 1 gün içinde otlanacaklar.
   const upcomingCount = useMemo(
@@ -248,6 +269,10 @@ export function AppShell() {
           onOpenSidebar={openSidebar}
           favorite={openNoteRecord.favorited_at !== null}
           onToggleFavorite={() => void toggleFavorite(openNoteRecord.id)}
+          tags={noteTags.get(openNoteRecord.id) ?? NO_TAGS}
+          allTags={tags}
+          onAddTag={(name) => void addTag(openNoteRecord.id, name)}
+          onRemoveTag={(tagId) => void removeTag(openNoteRecord.id, tagId)}
         />
       );
     }
@@ -305,6 +330,7 @@ export function AppShell() {
           <ListView
             notes={filtered}
             labor={labor}
+            noteTags={noteTags}
             now={now}
             searching={searching}
             onOpen={openNote}

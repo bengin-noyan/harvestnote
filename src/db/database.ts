@@ -107,6 +107,8 @@ export async function resetDatabase(): Promise<void> {
   // Yeni tablo eklerken buraya da eklemeyi unutmayın. Eksik kalan tablo
   // sıfırlamadan sonra yarım şema bırakıyor, hatayı çok geç fark ediyorsunuz.
   await db.execAsync(`
+    DROP TABLE IF EXISTS note_tags;
+    DROP TABLE IF EXISTS tags;
     DROP TABLE IF EXISTS note_blocks;
     DROP TABLE IF EXISTS inventory;
     DROP TABLE IF EXISTS notes;
